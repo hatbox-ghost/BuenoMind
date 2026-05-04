@@ -11,10 +11,6 @@
   --panel: #101b14;
 }
 
-* {
-  box-sizing: border-box;
-}
-
 body {
   margin: 0;
   background: #070708;
@@ -26,6 +22,7 @@ body {
 canvas {
   position: fixed;
   inset: 0;
+  cursor: crosshair;
 }
 
 .topbar {
@@ -47,19 +44,12 @@ canvas {
   border-right: 1px solid #111;
 }
 
-.logo svg {
-  width: 44px;
-  height: 44px;
-}
-
 .btn {
   padding: 14px 18px;
   border-right: 1px solid #111;
   background: #0d0d10;
   color: #666;
   cursor: pointer;
-  font-size: 14px;
-  text-transform: lowercase;
 }
 
 .btn.active {
@@ -71,8 +61,6 @@ canvas {
   margin-left: auto;
   padding: 14px 18px;
   color: var(--accent);
-  white-space: nowrap;
-  font-size: 14px;
 }
 
 .speed {
@@ -80,21 +68,17 @@ canvas {
   top: 53px;
   left: 148px;
   display: none;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3,1fr);
   background: #0d0d10;
   border: 1px solid var(--accent);
-  z-index: 20;
 }
 
 .speed button {
-  padding: 10px 14px;
+  padding: 10px;
   background: #0d0d10;
   border: none;
-  border-right: 1px solid #151515;
   color: #777;
   cursor: pointer;
-  font-size: 13px;
-  text-transform: lowercase;
 }
 
 .speed button.active {
@@ -109,21 +93,18 @@ canvas {
   right: 0;
   background: #08080a;
   border-top: 1px solid var(--accent);
-  z-index: 10;
 }
 
 .bottom-header {
   padding: 7px 12px;
   font-size: 12px;
   color: #8f8a7b;
-  letter-spacing: .05em;
-  text-transform: lowercase;
 }
 
 .states {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  height: 112px;
+  grid-template-columns: repeat(5,1fr);
+  height: 110px;
 }
 
 .state {
@@ -131,12 +112,10 @@ canvas {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 4px;
   border-right: 1px solid #151515;
   background: #0d0d10;
   color: #777;
   cursor: pointer;
-  text-align: center;
 }
 
 .state.active {
@@ -144,47 +123,10 @@ canvas {
   color: var(--accent);
 }
 
-.state .name {
-  font-size: 15px;
-}
+.state .name { font-size:14px; }
+.state .desc { font-size:11px; color:#8f8a7b; }
+.state .range { font-size:11px; color:#8f8a7b; }
 
-.state .desc {
-  font-size: 11px;
-  color: #8f8a7b;
-}
-
-.state .range {
-  font-size: 11px;
-  color: #8f8a7b;
-}
-
-@media (max-width: 700px) {
-  .readout {
-    font-size: 13px;
-    padding: 14px 10px;
-  }
-
-  .btn {
-    padding: 14px 14px;
-  }
-
-  .logo {
-    width: 62px;
-  }
-
-  .states {
-    height: 118px;
-  }
-
-  .state .name {
-    font-size: 14px;
-  }
-
-  .state .desc,
-  .state .range {
-    font-size: 10px;
-  }
-}
 </style>
 </head>
 
@@ -193,13 +135,7 @@ canvas {
 <canvas id="c"></canvas>
 
 <div class="topbar">
-  <div class="logo">
-    <svg viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="7"/>
-      <text x="50" y="60" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="31" font-weight="700" fill="var(--accent)">ebm</text>
-    </svg>
-  </div>
-
+  <div class="logo">ebm</div>
   <div class="btn" id="audio">audio</div>
   <div class="btn" id="visual">visual</div>
 
@@ -209,7 +145,7 @@ canvas {
     <button data-speed="fast">fast</button>
   </div>
 
-  <div class="readout" id="readout">200.0hz / 202.0hz — 2.00hz</div>
+  <div class="readout" id="readout"></div>
 </div>
 
 <div class="bottom">
@@ -219,247 +155,123 @@ canvas {
 
 <script>
 const states = [
-  { label: "delta", desc: "deep sleep", range: [0.5, 4], color: "#3d6ea8", panel: "#0d1724" },
-  { label: "theta", desc: "dreaming", range: [4, 8], color: "#6a7fc6", panel: "#12142a" },
-  { label: "alpha", desc: "calm", range: [8, 12], color: "#61a979", panel: "#101b14" },
-  { label: "beta", desc: "alert", range: [12, 30], color: "#e3a15e", panel: "#1b140c" },
-  { label: "gamma", desc: "focus", range: [30, 50], color: "#d24b5f", panel: "#211016" }
+  { label:"delta", desc:"deep sleep", range:[0.5,4], color:"#3d6ea8", panel:"#0d1724" },
+  { label:"theta", desc:"dreaming", range:[4,8], color:"#6a7fc6", panel:"#12142a" },
+  { label:"alpha", desc:"calm", range:[8,12], color:"#61a979", panel:"#101b14" },
+  { label:"beta", desc:"alert", range:[12,30], color:"#e3a15e", panel:"#1b140c" },
+  { label:"gamma", desc:"focus", range:[30,50], color:"#d24b5f", panel:"#211016" }
 ];
+
+let currentState = states[2];
+let pointer = {x:window.innerWidth/2,y:window.innerHeight/2};
+let visual=false, speed=1, locked=false;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 const readout = document.getElementById("readout");
-const speedBox = document.getElementById("speed");
-const audioBtn = document.getElementById("audio");
-const visualBtn = document.getElementById("visual");
-const statesDiv = document.getElementById("states");
 
-let width = window.innerWidth;
-let height = window.innerHeight;
-let pointer = { x: width / 2, y: height / 2 };
-let currentState = states[2];
-let visualOn = false;
-let speed = 1;
-let playing = false;
-
-let audioCtx = null;
-let leftOsc = null;
-let rightOsc = null;
-let masterGain = null;
-
-function setTheme(state) {
-  document.documentElement.style.setProperty("--accent", state.color);
-  document.documentElement.style.setProperty("--panel", state.panel);
+function resize(){
+  canvas.width=innerWidth;
+  canvas.height=innerHeight;
 }
-
-function resize() {
-  width = canvas.width = window.innerWidth;
-  height = canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
 resize();
+addEventListener("resize",resize);
 
-function getFreq(x, y) {
-  const left = 50 + (1 - y / height) * 300;
-  const beat = currentState.range[0] + (x / width) * (currentState.range[1] - currentState.range[0]);
-  return { left, right: left + beat, beat };
+function setTheme(s){
+  document.documentElement.style.setProperty("--accent",s.color);
+  document.documentElement.style.setProperty("--panel",s.panel);
 }
 
-function updateAudio(f) {
-  if (!audioCtx || !leftOsc || !rightOsc) return;
-  const now = audioCtx.currentTime;
-  leftOsc.frequency.setValueAtTime(f.left, now);
-  rightOsc.frequency.setValueAtTime(f.right, now);
+function getFreq(x,y){
+  const left = 50 + (1-y/innerHeight)*300;
+  const beat = currentState.range[0] + (x/innerWidth)*(currentState.range[1]-currentState.range[0]);
+  return {left,right:left+beat,beat};
 }
 
-function updateReadout() {
-  const f = getFreq(pointer.x, pointer.y);
-  readout.innerText = `${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
-  updateAudio(f);
-}
+function draw(){
+  ctx.fillStyle="#070708";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-function drawGrid() {
-  ctx.strokeStyle = currentState.color + "22";
-  ctx.lineWidth = 1;
+  if(visual){
+    const t=Date.now()/1000;
+    const sweep=0.5+0.5*Math.sin(t*speed*2*Math.PI);
+    const x=sweep*canvas.width;
+    const y=canvas.height/2;
 
-  for (let x = 0; x < width; x += 48) {
+    const g=ctx.createRadialGradient(x,y,0,x,y,40);
+    g.addColorStop(0,currentState.color);
+    g.addColorStop(1,"transparent");
+
+    ctx.fillStyle=g;
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
+    ctx.arc(x,y,40,0,Math.PI*2);
+    ctx.fill();
   }
 
-  const guide = [50, 63, 80, 100, 125, 160, 200, 250, 315];
-
-  guide.forEach(freq => {
-    const y = height - ((Math.log(freq) - Math.log(50)) / (Math.log(350) - Math.log(50))) * height;
-    ctx.strokeStyle = (freq === 50 || freq === 100 || freq === 200) ? currentState.color + "44" : currentState.color + "22";
-
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-
-    ctx.fillStyle = (freq === 50 || freq === 100 || freq === 200) ? currentState.color : "#5f5a50";
-    ctx.font = "12px Helvetica, Arial, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(`${freq}hz`, width - 12, y - 6);
-  });
-}
-
-function drawCursor() {
-  ctx.strokeStyle = currentState.color;
-  ctx.lineWidth = 1.5;
-
+  ctx.strokeStyle=currentState.color;
   ctx.beginPath();
-  ctx.arc(pointer.x, pointer.y, 15, Math.PI * 0.62, Math.PI * 1.38);
+  ctx.arc(pointer.x,pointer.y,15,Math.PI*0.6,Math.PI*1.4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(pointer.x,pointer.y,15,Math.PI*1.6,Math.PI*2.4);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(pointer.x, pointer.y, 15, Math.PI * 1.62, Math.PI * 2.38);
-  ctx.stroke();
-
-  ctx.fillStyle = currentState.color;
-  ctx.beginPath();
-  ctx.arc(pointer.x, pointer.y, 4, 0, Math.PI * 2);
+  ctx.arc(pointer.x,pointer.y,4,0,Math.PI*2);
   ctx.fill();
-}
-
-function drawVisual() {
-  if (!visualOn) return;
-
-  const t = Date.now() / 1000;
-  const sweep = 0.5 + 0.5 * Math.sin(t * speed * 2 * Math.PI);
-  const x = sweep * width;
-  const y = height / 2;
-
-  const pulse = 0.75 + 0.25 * Math.sin(t * getFreq(pointer.x, pointer.y).beat * 2 * Math.PI);
-
-  const g = ctx.createRadialGradient(x, y, 0, x, y, 38);
-  g.addColorStop(0, currentState.color);
-  g.addColorStop(0.35, currentState.color + "66");
-  g.addColorStop(1, "transparent");
-
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(x, y, 28 + pulse * 8, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = currentState.color;
-  ctx.beginPath();
-  ctx.arc(x, y, 4 + pulse * 2, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function draw() {
-  ctx.fillStyle = "#070708";
-  ctx.fillRect(0, 0, width, height);
-
-  drawGrid();
-  drawVisual();
-  drawCursor();
 
   requestAnimationFrame(draw);
 }
 draw();
 
-canvas.addEventListener("pointermove", e => {
-  pointer = { x: e.clientX, y: e.clientY };
-  updateReadout();
+canvas.addEventListener("pointermove",e=>{
+  if(locked) return;
+  pointer={x:e.clientX,y:e.clientY};
+  update();
 });
 
-audioBtn.onclick = async () => {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+canvas.addEventListener("click",e=>{
+  pointer={x:e.clientX,y:e.clientY};
+  locked=!locked;
+  update();
+});
 
-    leftOsc = audioCtx.createOscillator();
-    rightOsc = audioCtx.createOscillator();
+function update(){
+  const f=getFreq(pointer.x,pointer.y);
+  readout.innerText=`${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
+}
 
-    const leftGain = audioCtx.createGain();
-    const rightGain = audioCtx.createGain();
-    masterGain = audioCtx.createGain();
-
-    leftOsc.type = "sine";
-    rightOsc.type = "sine";
-
-    leftGain.gain.value = 0.08;
-    rightGain.gain.value = 0.08;
-    masterGain.gain.value = 0;
-
-    leftOsc.connect(leftGain);
-    rightOsc.connect(rightGain);
-    leftGain.connect(masterGain);
-    rightGain.connect(masterGain);
-    masterGain.connect(audioCtx.destination);
-
-    leftOsc.start();
-    rightOsc.start();
-
-    updateReadout();
-
-    const now = audioCtx.currentTime;
-    masterGain.gain.setValueAtTime(0, now);
-    masterGain.gain.linearRampToValueAtTime(0.75, now + 2);
-
-    playing = true;
-    audioBtn.classList.add("active");
-    return;
-  }
-
-  const now = audioCtx.currentTime;
-  masterGain.gain.cancelScheduledValues(now);
-
-  if (playing) {
-    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-    masterGain.gain.linearRampToValueAtTime(0, now + 3);
-    playing = false;
-    audioBtn.classList.remove("active");
-  } else {
-    if (audioCtx.state !== "running") await audioCtx.resume();
-    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-    masterGain.gain.linearRampToValueAtTime(0.75, now + 2);
-    playing = true;
-    audioBtn.classList.add("active");
-  }
+document.getElementById("visual").onclick=()=>{
+  visual=!visual;
+  document.getElementById("visual").classList.toggle("active");
+  document.getElementById("speed").style.display=visual?"grid":"none";
 };
 
-visualBtn.onclick = () => {
-  visualOn = !visualOn;
-  speedBox.style.display = visualOn ? "grid" : "none";
-  visualBtn.classList.toggle("active", visualOn);
-};
-
-document.querySelectorAll(".speed button").forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll(".speed button").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    speed = { slow: 0.65, medium: 1, fast: 1.35 }[btn.dataset.speed];
+document.querySelectorAll(".speed button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".speed button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    speed={slow:0.6,medium:1,fast:1.4}[b.dataset.speed];
   };
 });
 
-states.forEach((s, i) => {
-  const el = document.createElement("div");
-  el.className = "state" + (i === 2 ? " active" : "");
+const statesDiv=document.getElementById("states");
 
-  el.innerHTML = `
-    <div class="name">${s.label}</div>
-    <div class="desc">${s.desc}</div>
-    <div class="range">${s.range[0]}–${s.range[1]}hz</div>
-  `;
-
-  el.onclick = () => {
-    document.querySelectorAll(".state").forEach(x => x.classList.remove("active"));
+states.forEach((s,i)=>{
+  const el=document.createElement("div");
+  el.className="state"+(i===2?" active":"");
+  el.innerHTML=`<div class="name">${s.label}</div><div class="desc">${s.desc}</div><div class="range">${s.range[0]}–${s.range[1]}hz</div>`;
+  el.onclick=()=>{
+    document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
     el.classList.add("active");
-    currentState = s;
+    currentState=s;
     setTheme(s);
-    updateReadout();
   };
-
   statesDiv.appendChild(el);
 });
 
 setTheme(currentState);
-updateReadout();
+update();
 </script>
 
 </body>
