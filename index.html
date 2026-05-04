@@ -7,10 +7,10 @@ const brainwaveStates = [
     frequencyRange: [0.5, 4],
     theme: {
       accent: '#3d6ea8',
-      accentSoft: 'rgba(61, 110, 168, 0.10)',
-      glow: 'rgba(61, 110, 168, 0.55)',
-      activePanel: '#0d1724',
-      border: '#1c314a',
+      accentSoft: 'rgba(61, 110, 168, 0.08)',
+      glow: 'rgba(61, 110, 168, 0.45)',
+      activePanel: '#0b1521',
+      border: '#1a2b41',
     },
   },
   {
@@ -19,10 +19,10 @@ const brainwaveStates = [
     frequencyRange: [4, 8],
     theme: {
       accent: '#6a7fc6',
-      accentSoft: 'rgba(106, 127, 198, 0.10)',
-      glow: 'rgba(106, 127, 198, 0.55)',
-      activePanel: '#12142a',
-      border: '#2a315f',
+      accentSoft: 'rgba(106, 127, 198, 0.08)',
+      glow: 'rgba(106, 127, 198, 0.45)',
+      activePanel: '#111425',
+      border: '#252c54',
     },
   },
   {
@@ -31,10 +31,10 @@ const brainwaveStates = [
     frequencyRange: [8, 12],
     theme: {
       accent: '#61a979',
-      accentSoft: 'rgba(97, 169, 121, 0.10)',
-      glow: 'rgba(97, 169, 121, 0.55)',
-      activePanel: '#101b14',
-      border: '#274934',
+      accentSoft: 'rgba(97, 169, 121, 0.08)',
+      glow: 'rgba(97, 169, 121, 0.45)',
+      activePanel: '#0f1912',
+      border: '#243f2e',
     },
   },
   {
@@ -43,10 +43,10 @@ const brainwaveStates = [
     frequencyRange: [12, 30],
     theme: {
       accent: '#e3a15e',
-      accentSoft: 'rgba(227, 161, 94, 0.10)',
-      glow: 'rgba(227, 161, 94, 0.55)',
-      activePanel: '#1b140c',
-      border: '#5c4430',
+      accentSoft: 'rgba(227, 161, 94, 0.08)',
+      glow: 'rgba(227, 161, 94, 0.45)',
+      activePanel: '#181209',
+      border: '#4f3927',
     },
   },
   {
@@ -55,10 +55,10 @@ const brainwaveStates = [
     frequencyRange: [30, 50],
     theme: {
       accent: '#d24b5f',
-      accentSoft: 'rgba(210, 75, 95, 0.11)',
-      glow: 'rgba(210, 75, 95, 0.62)',
-      activePanel: '#211016',
-      border: '#74323d',
+      accentSoft: 'rgba(210, 75, 95, 0.08)',
+      glow: 'rgba(210, 75, 95, 0.5)',
+      activePanel: '#1b0d12',
+      border: '#66303a',
     },
   },
 ];
@@ -94,19 +94,31 @@ function getFrequenciesFromPoint(x, y, width, height, state) {
 
 function EBMLogo({ color }) {
   return (
-    <svg width="58" height="38" viewBox="0 0 140 92" aria-label="ebm" role="img">
-      <circle cx="70" cy="45" r="38" fill="none" stroke={color} strokeWidth="7" />
+    <svg width="68" height="42" viewBox="0 0 180 104" aria-label="ebm" role="img">
+      <circle cx="82" cy="48" r="39" fill="none" stroke={color} strokeWidth="8" />
       <text
-        x="70"
-        y="60"
+        x="82"
+        y="66"
         textAnchor="middle"
-        fontSize="39"
+        fontSize="44"
         fontFamily="Helvetica, Arial, sans-serif"
         fontWeight="700"
-        letterSpacing="-3"
+        letterSpacing="-4"
         fill={color}
       >
         ebm
+      </text>
+      <text
+        x="82"
+        y="98"
+        textAnchor="middle"
+        fontSize="10"
+        fontFamily="Helvetica, Arial, sans-serif"
+        fontWeight="400"
+        letterSpacing="1.8"
+        fill={color}
+      >
+        evidence based music
       </text>
     </svg>
   );
@@ -214,15 +226,25 @@ export default function BinauralBeatVisuals() {
       const pulse = 0.5 + 0.5 * Math.sin(nowSeconds * currentFreq.beat * Math.PI * 2);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#070708';
+      ctx.fillStyle = '#050506';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const grainStep = 4;
+      ctx.globalAlpha = 0.018;
+      ctx.fillStyle = '#c9c3b5';
+      for (let gy = 0; gy < canvas.height; gy += grainStep) {
+        for (let gx = (gy % 8) / 2; gx < canvas.width; gx += grainStep * 8) {
+          ctx.fillRect(gx, gy, 1, 1);
+        }
+      }
+      ctx.globalAlpha = 1;
 
       ctx.strokeStyle = activeTheme.accentSoft;
       ctx.lineWidth = 1;
-      for (let gx = 0; gx < canvas.width; gx += 48) {
+      for (let gx = 0; gx < canvas.width; gx += 64) {
         ctx.beginPath();
-        ctx.moveTo(gx, 0);
-        ctx.lineTo(gx, canvas.height);
+        ctx.moveTo(gx + 0.5, 0);
+        ctx.lineTo(gx + 0.5, canvas.height);
         ctx.stroke();
       }
 
@@ -230,33 +252,33 @@ export default function BinauralBeatVisuals() {
         const gy = yForCarrierHz(freq, canvas.height);
         const octave = freq === 50 || freq === 100 || freq === 200;
         ctx.strokeStyle = octave
-          ? activeTheme.accentSoft.replace('0.10', '0.22').replace('0.11', '0.22')
+          ? activeTheme.accentSoft.replace('0.08', '0.20')
           : activeTheme.accentSoft;
-        ctx.lineWidth = octave ? 1.25 : 1;
+        ctx.lineWidth = octave ? 1.15 : 1;
         ctx.beginPath();
-        ctx.moveTo(0, gy);
-        ctx.lineTo(canvas.width, gy);
+        ctx.moveTo(0, gy + 0.5);
+        ctx.lineTo(canvas.width, gy + 0.5);
         ctx.stroke();
 
-        ctx.fillStyle = octave ? activeTheme.accent : '#5f5a50';
+        ctx.fillStyle = octave ? activeTheme.accent : '#4d4b45';
         ctx.font = '9px Helvetica, Arial, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(`${freq}hz`, canvas.width - 10, gy - 4);
+        ctx.fillText(`${freq}hz`, canvas.width - 12, gy - 5);
       });
 
       if (showVisual) {
         ctx.strokeStyle = activeTheme.accentSoft;
-        ctx.globalAlpha = 0.16;
+        ctx.globalAlpha = 0.12;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(margin, pingY);
-        ctx.lineTo(canvas.width - margin, pingY);
+        ctx.moveTo(margin, pingY + 0.5);
+        ctx.lineTo(canvas.width - margin, pingY + 0.5);
         ctx.stroke();
 
-        const glowRadius = 24 + pulse * 12;
+        const glowRadius = 20 + pulse * 9;
         const glow = ctx.createRadialGradient(pingX, pingY, 0, pingX, pingY, glowRadius);
-        glow.addColorStop(0, activeTheme.glow.replace('0.55', '0.65').replace('0.62', '0.70'));
-        glow.addColorStop(0.35, activeTheme.glow.replace('0.55', '0.28').replace('0.62', '0.32'));
+        glow.addColorStop(0, activeTheme.glow.replace('0.45', '0.55').replace('0.5', '0.58'));
+        glow.addColorStop(0.4, activeTheme.glow.replace('0.45', '0.22').replace('0.5', '0.25'));
         glow.addColorStop(1, 'rgba(0,0,0,0)');
 
         ctx.globalAlpha = 1;
@@ -266,30 +288,30 @@ export default function BinauralBeatVisuals() {
         ctx.fill();
 
         ctx.fillStyle = activeTheme.accent;
-        ctx.shadowBlur = 14;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = activeTheme.glow;
         ctx.beginPath();
-        ctx.arc(pingX, pingY, 4 + pulse * 2, 0, Math.PI * 2);
+        ctx.arc(pingX, pingY, 3.5 + pulse * 1.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
       ctx.strokeStyle = activeTheme.accent;
-      ctx.lineWidth = 1.5;
-      ctx.shadowBlur = isLocked ? 10 : 4;
+      ctx.lineWidth = 1.25;
+      ctx.shadowBlur = isLocked ? 7 : 3;
       ctx.shadowColor = activeTheme.glow;
 
       ctx.beginPath();
-      ctx.arc(pointer.x, pointer.y, 15, Math.PI * 0.62, Math.PI * 1.38);
+      ctx.arc(pointer.x, pointer.y, 14, Math.PI * 0.62, Math.PI * 1.38);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(pointer.x, pointer.y, 15, Math.PI * 1.62, Math.PI * 2.38);
+      ctx.arc(pointer.x, pointer.y, 14, Math.PI * 1.62, Math.PI * 2.38);
       ctx.stroke();
 
       ctx.shadowBlur = 0;
       ctx.fillStyle = activeTheme.accent;
       ctx.beginPath();
-      ctx.arc(pointer.x, pointer.y, 4, 0, Math.PI * 2);
+      ctx.arc(pointer.x, pointer.y, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
 
@@ -385,27 +407,27 @@ export default function BinauralBeatVisuals() {
 
   return (
     <div
-      className="relative h-screen w-screen select-none overflow-hidden bg-[#070708] text-[#c9c3b5]"
+      className="relative h-screen w-screen select-none overflow-hidden bg-[#050506] text-[#c8c1b2]"
       style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair" />
 
       <div
-        className="absolute left-0 right-0 top-0 z-10 flex items-stretch border-b bg-[#09090b]"
+        className="absolute left-0 right-0 top-0 z-10 flex items-stretch border-b bg-[#050506]/95 backdrop-blur-[1px]"
         style={{ borderColor: theme.border }}
       >
-        <div className="flex items-center border-r px-4" style={{ borderColor: '#161616' }}>
+        <div className="flex items-center border-r px-4" style={{ borderColor: '#111' }}>
           <EBMLogo color={theme.accent} />
         </div>
 
         <button
           type="button"
           onClick={toggleAudio}
-          className="border-r px-[15px] py-3 text-[10px] lowercase tracking-[0.08em]"
+          className="border-r px-[18px] py-3 text-[11px] lowercase tracking-[0.02em]"
           style={{
-            borderColor: '#161616',
-            color: playing ? theme.accent : '#555',
-            background: playing ? theme.activePanel : 'transparent',
+            borderColor: '#111',
+            color: playing ? theme.accent : '#595650',
+            background: playing ? theme.activePanel : '#070707',
             boxShadow: playing ? `inset 0 -2px 0 ${theme.accent}` : 'none',
           }}
         >
@@ -418,11 +440,11 @@ export default function BinauralBeatVisuals() {
             event.stopPropagation();
             setVisualMode((prev) => !prev);
           }}
-          className="border-r px-[15px] py-3 text-[10px] lowercase tracking-[0.08em]"
+          className="border-r px-[18px] py-3 text-[11px] lowercase tracking-[0.02em]"
           style={{
-            borderColor: '#161616',
-            color: visualMode ? theme.accent : '#555',
-            background: visualMode ? theme.activePanel : 'transparent',
+            borderColor: '#111',
+            color: visualMode ? theme.accent : '#595650',
+            background: visualMode ? theme.activePanel : '#070707',
             boxShadow: visualMode ? `inset 0 -2px 0 ${theme.accent}` : 'none',
           }}
         >
@@ -431,7 +453,7 @@ export default function BinauralBeatVisuals() {
 
         {visualMode && (
           <div
-            className="absolute left-[148px] top-full z-20 grid w-[210px] grid-cols-3 gap-px border border-t-0 bg-[#09090b] shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+            className="absolute left-[168px] top-full z-20 grid w-[216px] grid-cols-3 gap-px border border-t-0 bg-[#060606] shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
             style={{ borderColor: theme.border }}
           >
             {['slow', 'medium', 'fast'].map((speed) => (
@@ -442,10 +464,10 @@ export default function BinauralBeatVisuals() {
                   event.stopPropagation();
                   setSweepSpeed(speed);
                 }}
-                className="px-2 py-2 text-[9px] lowercase tracking-[0.06em]"
+                className="px-3 py-2 text-[10px] lowercase tracking-[0.01em]"
                 style={{
-                  color: sweepSpeed === speed ? theme.accent : '#777',
-                  background: sweepSpeed === speed ? theme.activePanel : '#0d0d10',
+                  color: sweepSpeed === speed ? theme.accent : '#6b675f',
+                  background: sweepSpeed === speed ? theme.activePanel : '#0a0a0a',
                   boxShadow: sweepSpeed === speed ? `inset 0 -2px 0 ${theme.accent}` : 'none',
                 }}
               >
@@ -455,23 +477,23 @@ export default function BinauralBeatVisuals() {
           </div>
         )}
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 border-r px-4 py-2" style={{ borderColor: '#161616' }}>
-          <span className="text-[8px] lowercase tracking-[0.08em] text-[#8f8a7b]">left / right</span>
-          <span className="whitespace-nowrap text-[13px] font-bold tracking-[0.04em]" style={{ color: theme.accent }}>
+        <div className="flex min-w-0 flex-1 items-center gap-3 border-r px-5 py-2" style={{ borderColor: '#111' }}>
+          <span className="text-[10px] lowercase tracking-[0.02em] text-[#6b675f]">left / right</span>
+          <span className="whitespace-nowrap text-[15px] font-normal tracking-[-0.01em]" style={{ color: theme.accent }}>
             {frequencies.left.toFixed(1)}hz / {frequencies.right.toFixed(1)}hz
           </span>
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-2">
-          <span className="text-[8px] lowercase tracking-[0.08em] text-[#8f8a7b]">beat</span>
-          <span className="whitespace-nowrap text-[13px] font-bold tracking-[0.04em]" style={{ color: theme.accent }}>
+        <div className="flex items-center gap-3 px-5 py-2">
+          <span className="text-[10px] lowercase tracking-[0.02em] text-[#6b675f]">beat</span>
+          <span className="whitespace-nowrap text-[15px] font-normal tracking-[-0.01em]" style={{ color: theme.accent }}>
             {frequencies.beat.toFixed(2)}hz
           </span>
         </div>
       </div>
 
       <div
-        className="absolute bottom-0 left-0 right-0 z-10 grid grid-cols-5 gap-px border-t bg-[#08080a]"
+        className="absolute bottom-0 left-0 right-0 z-10 grid grid-cols-5 gap-px border-t bg-[#050506]/95"
         style={{ borderColor: theme.border }}
       >
         {brainwaveStates.map((state) => {
@@ -484,16 +506,16 @@ export default function BinauralBeatVisuals() {
                 event.stopPropagation();
                 setSelectedState(state);
               }}
-              className="flex min-h-[46px] flex-col items-center justify-center gap-[5px] border-r px-3 py-2 text-center"
+              className="flex min-h-[50px] flex-col items-center justify-center gap-[4px] border-r px-3 py-2 text-center"
               style={{
-                borderColor: '#151515',
-                background: active ? state.theme.activePanel : '#0d0d10',
-                color: active ? state.theme.accent : '#777',
+                borderColor: '#111',
+                background: active ? state.theme.activePanel : '#070707',
+                color: active ? state.theme.accent : '#66625a',
                 boxShadow: active ? `inset 0 -2px 0 ${state.theme.accent}` : 'none',
               }}
             >
-              <span className="text-[11px] font-bold lowercase tracking-[0.06em]">{state.label}</span>
-              <span className="text-[8px] lowercase tracking-[0.04em] text-[#8f8a7b]">
+              <span className="text-[13px] font-normal lowercase tracking-[-0.01em]">{state.label}</span>
+              <span className="text-[9px] font-normal lowercase tracking-[0.01em] text-[#6b675f]">
                 {state.frequencyRange[0]}–{state.frequencyRange[1]}hz
               </span>
             </button>
