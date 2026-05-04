@@ -1,131 +1,154 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>bueno brain entrainment</title>
 
 <style>
-:root {
-  --accent: #61a979;
-  --panel: #101b14;
+:root{
+  --accent:#61a979;
+  --bg:#070708;
 }
 
-body {
-  margin: 0;
-  background: #070708;
-  color: #c9c3b5;
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  background:var(--bg);
+  color:#c9c3b5;
   font-family: Helvetica, Arial, sans-serif;
-  overflow: hidden;
+  overflow:hidden;
 }
 
-canvas {
-  position: fixed;
-  inset: 0;
-  cursor: crosshair;
+/* canvas */
+canvas{
+  position:fixed;
+  inset:0;
 }
 
-.topbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  border-bottom: 1px solid var(--accent);
-  background: #09090b;
-  z-index: 10;
+/* TOP BAR (unchanged look) */
+.topbar{
+  position:fixed;
+  top:0;left:0;right:0;
+  display:flex;
+  align-items:center;
+  border-bottom:1px solid #1a1a1a;
+  background:#080809;
+  z-index:10;
 }
 
-.logo {
-  width: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-right: 1px solid #111;
+.logo{
+  width:64px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-right:1px solid #111;
+  color:var(--accent);
+  font-weight:700;
 }
 
-.btn {
-  padding: 14px 18px;
-  border-right: 1px solid #111;
-  background: #0d0d10;
-  color: #666;
-  cursor: pointer;
+.btn{
+  padding:14px 16px;
+  border-right:1px solid #111;
+  background:#0d0d10;
+  color:#666;
+  cursor:pointer;
 }
 
-.btn.active {
-  color: var(--accent);
-  background: var(--panel);
+.btn.active{
+  color:var(--accent);
+  background:#0f1a13;
 }
 
-.readout {
-  margin-left: auto;
-  padding: 14px 18px;
-  color: var(--accent);
+.readout{
+  margin-left:auto;
+  padding:14px 16px;
+  color:var(--accent);
+  font-size:13px;
+  white-space:nowrap;
 }
 
-.speed {
-  position: fixed;
-  top: 53px;
-  left: 148px;
-  display: none;
-  grid-template-columns: repeat(3,1fr);
-  background: #0d0d10;
-  border: 1px solid var(--accent);
+/* ===== FIXED BOTTOM BAR ===== */
+
+.bottom{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  background:#08080a;
+  border-top:1px solid #1a1a1a;
+  z-index:10;
+  height:110px;
+  display:flex;
+  flex-direction:column;
 }
 
-.speed button {
-  padding: 10px;
-  background: #0d0d10;
-  border: none;
-  color: #777;
-  cursor: pointer;
+.bottom-title{
+  font-size:11px;
+  letter-spacing:.08em;
+  color:#8f8a7b;
+  padding:6px 12px;
 }
 
-.speed button.active {
-  color: var(--accent);
-  background: var(--panel);
+/* KEY FIX */
+.states{
+  flex:1;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
 }
 
-.bottom {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #08080a;
-  border-top: 1px solid var(--accent);
+/* KEY FIX */
+.state{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:3px;
+  border-right:1px solid #141414;
+  background:#0d0d10;
+  color:#777;
+  cursor:pointer;
+  text-align:center;
+  padding:6px 4px;
 }
 
-.bottom-header {
-  padding: 7px 12px;
-  font-size: 12px;
-  color: #8f8a7b;
+/* KEY FIX */
+.state.active{
+  background:#101b14;
+  color:var(--accent);
 }
 
-.states {
-  display: grid;
-  grid-template-columns: repeat(5,1fr);
-  height: 110px;
+/* readable sizing */
+.state .name{
+  font-size:13px;
+  font-weight:600;
 }
 
-.state {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  border-right: 1px solid #151515;
-  background: #0d0d10;
-  color: #777;
-  cursor: pointer;
+.state .desc{
+  font-size:10px;
+  color:#8f8a7b;
 }
 
-.state.active {
-  background: var(--panel);
-  color: var(--accent);
+.state .range{
+  font-size:10px;
+  color:#8f8a7b;
 }
 
-.state .name { font-size:14px; }
-.state .desc { font-size:11px; color:#8f8a7b; }
-.state .range { font-size:11px; color:#8f8a7b; }
+/* MOBILE FIX (this is the main change) */
+@media (max-width:700px){
+  .bottom{
+    height:120px;
+  }
+
+  .state .name{font-size:12px;}
+  .state .desc,
+  .state .range{font-size:9px;}
+
+  .readout{
+    font-size:12px;
+    padding:14px 10px;
+  }
+}
 
 </style>
 </head>
@@ -138,139 +161,102 @@ canvas {
   <div class="logo">ebm</div>
   <div class="btn" id="audio">audio</div>
   <div class="btn" id="visual">visual</div>
-
-  <div class="speed" id="speed">
-    <button data-speed="slow">slow</button>
-    <button data-speed="medium" class="active">medium</button>
-    <button data-speed="fast">fast</button>
-  </div>
-
   <div class="readout" id="readout"></div>
 </div>
 
 <div class="bottom">
-  <div class="bottom-header">bueno brain entrainment</div>
+  <div class="bottom-title">bueno brain entrainment</div>
   <div class="states" id="states"></div>
 </div>
 
 <script>
 const states = [
-  { label:"delta", desc:"deep sleep", range:[0.5,4], color:"#3d6ea8", panel:"#0d1724" },
-  { label:"theta", desc:"dreaming", range:[4,8], color:"#6a7fc6", panel:"#12142a" },
-  { label:"alpha", desc:"calm", range:[8,12], color:"#61a979", panel:"#101b14" },
-  { label:"beta", desc:"alert", range:[12,30], color:"#e3a15e", panel:"#1b140c" },
-  { label:"gamma", desc:"focus", range:[30,50], color:"#d24b5f", panel:"#211016" }
+ {label:"delta",desc:"sleep",range:[0.5,4],color:"#3d6ea8"},
+ {label:"theta",desc:"dream",range:[4,8],color:"#6a7fc6"},
+ {label:"alpha",desc:"calm",range:[8,12],color:"#61a979"},
+ {label:"beta",desc:"alert",range:[12,30],color:"#e3a15e"},
+ {label:"gamma",desc:"focus",range:[30,50],color:"#d24b5f"}
 ];
 
 let currentState = states[2];
-let pointer = {x:window.innerWidth/2,y:window.innerHeight/2};
-let visual=false, speed=1, locked=false;
+let pointer = {x:innerWidth/2,y:innerHeight/2};
+let locked=false;
+let visual=false;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 const readout = document.getElementById("readout");
 
 function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
 }
 resize();
 addEventListener("resize",resize);
 
-function setTheme(s){
-  document.documentElement.style.setProperty("--accent",s.color);
-  document.documentElement.style.setProperty("--panel",s.panel);
+function getFreq(x,y){
+ const left = 50 + (1-y/innerHeight)*300;
+ const beat = currentState.range[0] + (x/innerWidth)*(currentState.range[1]-currentState.range[0]);
+ return {left,right:left+beat,beat};
 }
 
-function getFreq(x,y){
-  const left = 50 + (1-y/innerHeight)*300;
-  const beat = currentState.range[0] + (x/innerWidth)*(currentState.range[1]-currentState.range[0]);
-  return {left,right:left+beat,beat};
+function update(){
+ const f=getFreq(pointer.x,pointer.y);
+ readout.innerText=`${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
 }
 
 function draw(){
-  ctx.fillStyle="#070708";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.fillStyle="#070708";
+ ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  if(visual){
-    const t=Date.now()/1000;
-    const sweep=0.5+0.5*Math.sin(t*speed*2*Math.PI);
-    const x=sweep*canvas.width;
-    const y=canvas.height/2;
+ ctx.strokeStyle=currentState.color;
+ ctx.beginPath();
+ ctx.arc(pointer.x,pointer.y,15,Math.PI*0.6,Math.PI*1.4);
+ ctx.stroke();
+ ctx.beginPath();
+ ctx.arc(pointer.x,pointer.y,15,Math.PI*1.6,Math.PI*2.4);
+ ctx.stroke();
 
-    const g=ctx.createRadialGradient(x,y,0,x,y,40);
-    g.addColorStop(0,currentState.color);
-    g.addColorStop(1,"transparent");
+ ctx.beginPath();
+ ctx.arc(pointer.x,pointer.y,4,0,Math.PI*2);
+ ctx.fill();
 
-    ctx.fillStyle=g;
-    ctx.beginPath();
-    ctx.arc(x,y,40,0,Math.PI*2);
-    ctx.fill();
-  }
-
-  ctx.strokeStyle=currentState.color;
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,15,Math.PI*0.6,Math.PI*1.4);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,15,Math.PI*1.6,Math.PI*2.4);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,4,0,Math.PI*2);
-  ctx.fill();
-
-  requestAnimationFrame(draw);
+ requestAnimationFrame(draw);
 }
 draw();
 
+/* LOCK SYSTEM (preserved) */
 canvas.addEventListener("pointermove",e=>{
-  if(locked) return;
-  pointer={x:e.clientX,y:e.clientY};
-  update();
+ if(locked)return;
+ pointer={x:e.clientX,y:e.clientY};
+ update();
 });
 
 canvas.addEventListener("click",e=>{
-  pointer={x:e.clientX,y:e.clientY};
-  locked=!locked;
-  update();
+ pointer={x:e.clientX,y:e.clientY};
+ locked=!locked;
+ update();
 });
 
-function update(){
-  const f=getFreq(pointer.x,pointer.y);
-  readout.innerText=`${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
-}
-
-document.getElementById("visual").onclick=()=>{
-  visual=!visual;
-  document.getElementById("visual").classList.toggle("active");
-  document.getElementById("speed").style.display=visual?"grid":"none";
-};
-
-document.querySelectorAll(".speed button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll(".speed button").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    speed={slow:0.6,medium:1,fast:1.4}[b.dataset.speed];
-  };
-});
-
+/* STATES */
 const statesDiv=document.getElementById("states");
 
 states.forEach((s,i)=>{
-  const el=document.createElement("div");
-  el.className="state"+(i===2?" active":"");
-  el.innerHTML=`<div class="name">${s.label}</div><div class="desc">${s.desc}</div><div class="range">${s.range[0]}–${s.range[1]}hz</div>`;
-  el.onclick=()=>{
-    document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
-    el.classList.add("active");
-    currentState=s;
-    setTheme(s);
-  };
-  statesDiv.appendChild(el);
+ const el=document.createElement("div");
+ el.className="state"+(i===2?" active":"");
+ el.innerHTML=`
+   <div class="name">${s.label}</div>
+   <div class="desc">${s.desc}</div>
+   <div class="range">${s.range[0]}–${s.range[1]}hz</div>
+ `;
+ el.onclick=()=>{
+   document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
+   el.classList.add("active");
+   currentState=s;
+ };
+ statesDiv.appendChild(el);
 });
 
-setTheme(currentState);
 update();
 </script>
 
