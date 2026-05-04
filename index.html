@@ -1,557 +1,223 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Evidence Based Music — Binaural EMDR Instrument</title>
-  <style>
-    :root {
-      --accent: #3d6ea8;
-      --accent-soft: rgba(61, 110, 168, 0.1);
-      --glow: rgba(61, 110, 168, 0.55);
-      --panel: #080d14;
-      --active-panel: #0d1724;
-      --border: #1c314a;
-      --bg: #070708;
-      --text: #c9c3b5;
-      --muted: #8f8a7b;
-      --dim: #5f5a50;
-    }
+import React, { useEffect, useRef, useState } from 'react';
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
+const brainwaveStates = [
+  {
+    label: 'delta',
+    description: 'deep sleep',
+    frequencyRange: [0.5, 4],
+    theme: {
+      accent: '#3d6ea8',
+      accentSoft: 'rgba(61, 110, 168, 0.10)',
+      glow: 'rgba(61, 110, 168, 0.55)',
+      activePanel: '#0d1724',
+      border: '#1c314a',
+    },
+  },
+  {
+    label: 'theta',
+    description: 'relaxation',
+    frequencyRange: [4, 8],
+    theme: {
+      accent: '#6a7fc6',
+      accentSoft: 'rgba(106, 127, 198, 0.10)',
+      glow: 'rgba(106, 127, 198, 0.55)',
+      activePanel: '#12142a',
+      border: '#2a315f',
+    },
+  },
+  {
+    label: 'alpha',
+    description: 'calm focus',
+    frequencyRange: [8, 12],
+    theme: {
+      accent: '#61a979',
+      accentSoft: 'rgba(97, 169, 121, 0.10)',
+      glow: 'rgba(97, 169, 121, 0.55)',
+      activePanel: '#101b14',
+      border: '#274934',
+    },
+  },
+  {
+    label: 'beta',
+    description: 'alertness',
+    frequencyRange: [12, 30],
+    theme: {
+      accent: '#e3a15e',
+      accentSoft: 'rgba(227, 161, 94, 0.10)',
+      glow: 'rgba(227, 161, 94, 0.55)',
+      activePanel: '#1b140c',
+      border: '#5c4430',
+    },
+  },
+  {
+    label: 'gamma',
+    description: 'high focus',
+    frequencyRange: [30, 50],
+    theme: {
+      accent: '#d24b5f',
+      accentSoft: 'rgba(210, 75, 95, 0.11)',
+      glow: 'rgba(210, 75, 95, 0.62)',
+      activePanel: '#211016',
+      border: '#74323d',
+    },
+  },
+];
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Courier, "Courier New", monospace;
-      user-select: none;
-    }
+const carrierMinHz = 50;
+const carrierMaxHz = 350;
+const carrierGuideHz = [50, 63, 80, 100, 125, 160, 200, 250, 315, 350];
+const speedMap = { slow: 0.65, medium: 1, fast: 1.35 };
 
-    button,
-    input {
-      font-family: inherit;
-    }
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
-    button {
-      cursor: pointer;
-    }
+function yForCarrierHz(freq, height) {
+  const minLog = Math.log(carrierMinHz);
+  const maxLog = Math.log(carrierMaxHz);
+  const normalized = (Math.log(freq) - minLog) / (maxLog - minLog);
+  return height * (1 - normalized);
+}
 
-    #app {
-      position: relative;
-      width: 100vw;
-      height: 100dvh;
-      overflow: hidden;
-      background: var(--bg);
-    }
+function getFrequenciesFromPoint(x, y, width, height, state) {
+  const safeWidth = Math.max(1, width);
+  const safeHeight = Math.max(1, height);
+  const nx = clamp(x / safeWidth, 0, 1);
+  const ny = clamp(y / safeHeight, 0, 1);
+  const minLog = Math.log(carrierMinHz);
+  const maxLog = Math.log(carrierMaxHz);
+  const left = Math.exp(minLog + (1 - ny) * (maxLog - minLog));
+  const [minBeat, maxBeat] = state.frequencyRange;
+  const beat = minBeat + nx * (maxBeat - minBeat);
+  return { left, right: left + beat, beat };
+}
 
-    #field {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      cursor: crosshair;
-    }
+function EBMLogo({ color }) {
+  return (
+    <svg width="58" height="38" viewBox="0 0 140 92" aria-label="ebm" role="img">
+      <circle cx="70" cy="45" r="38" fill="none" stroke={color} strokeWidth="7" />
+      <text
+        x="70"
+        y="60"
+        textAnchor="middle"
+        fontSize="39"
+        fontFamily="Helvetica, Arial, sans-serif"
+        fontWeight="700"
+        letterSpacing="-3"
+        fill={color}
+      >
+        ebm
+      </text>
+    </svg>
+  );
+}
 
-    #logo {
-      position: absolute;
-      inset: 0;
-      width: 320px;
-      max-width: 42vw;
-      margin: auto;
-      opacity: 0.06;
-      pointer-events: none;
-      filter: contrast(1.1);
-    }
+export default function BinauralBeatVisuals() {
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const pointerRef = useRef({ x: 0, y: 0 });
+  const lockedRef = useRef(false);
+  const selectedStateRef = useRef(brainwaveStates[0]);
+  const currentFreqRef = useRef({ left: 200, right: 202, beat: 2 });
+  const visualRef = useRef(false);
+  const sweepRateRef = useRef(speedMap.medium);
 
-    #topbar {
-      position: absolute;
-      top: 0;
-      right: 0;
-      left: 0;
-      display: flex;
-      align-items: stretch;
-      border-bottom: 1px solid var(--border);
-      background: #09090b;
-      z-index: 5;
-    }
+  const audioCtxRef = useRef(null);
+  const leftOscRef = useRef(null);
+  const rightOscRef = useRef(null);
+  const masterGainRef = useRef(null);
 
-    .top-btn,
-    .top-cell,
-    .speed-cell {
-      border: 0;
-      border-right: 1px solid #161616;
-      background: transparent;
-      color: #555;
-    }
+  const [selectedState, setSelectedState] = useState(brainwaveStates[0]);
+  const [frequencies, setFrequencies] = useState({ left: 200, right: 202, beat: 2 });
+  const [locked, setLocked] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [visualMode, setVisualMode] = useState(false);
+  const [sweepSpeed, setSweepSpeed] = useState('medium');
 
-    .top-btn {
-      padding: 12px 15px;
-      font-size: 10px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-    }
+  const theme = selectedState.theme;
 
-    .top-btn.active {
-      background: var(--active-panel);
-      color: var(--accent);
-      box-shadow: inset 0 -2px 0 var(--accent);
-    }
+  const applyFrequencies = (x, y, glide = false) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    .speed-cell {
-      display: flex;
-      align-items: center;
-      width: 190px;
-      gap: 8px;
-      padding: 8px 12px;
-    }
+    const next = getFrequenciesFromPoint(x, y, canvas.width, canvas.height, selectedStateRef.current);
+    currentFreqRef.current = next;
+    setFrequencies(next);
 
-    .speed-cell span,
-    .readout-label,
-    .panel-title,
-    .panel-small,
-    #bottombar div {
-      color: var(--muted);
-      font-size: 8px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-    }
+    if (audioCtxRef.current && leftOscRef.current && rightOscRef.current) {
+      const now = audioCtxRef.current.currentTime;
 
-    input[type="range"] {
-      width: 100%;
-      height: 22px;
-      appearance: none;
-      background: transparent;
-    }
-
-    input[type="range"]::-webkit-slider-runnable-track {
-      height: 3px;
-      border-radius: 3px;
-      background: #303033;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      width: 15px;
-      height: 15px;
-      margin-top: -6px;
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      appearance: none;
-      background: var(--accent);
-    }
-
-    input[type="range"]::-moz-range-track {
-      height: 3px;
-      border-radius: 3px;
-      background: #303033;
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 15px;
-      height: 15px;
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      background: var(--accent);
-    }
-
-    .top-cell {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-      padding: 8px 16px;
-    }
-
-    .freq-cell {
-      flex: 1;
-    }
-
-    .readout-value {
-      color: var(--accent);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      white-space: nowrap;
-    }
-
-    #panel {
-      position: absolute;
-      top: 64px;
-      left: 12px;
-      width: 190px;
-      border: 1px solid var(--border);
-      background: color-mix(in srgb, var(--panel) 95%, transparent);
-      box-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
-      padding: 8px;
-      z-index: 5;
-    }
-
-    .panel-title {
-      margin-bottom: 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #181818;
-    }
-
-    #states {
-      display: grid;
-      gap: 1px;
-      background: #121212;
-    }
-
-    .state-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      border: 0;
-      background: #0d0d10;
-      color: #777;
-      padding: 12px 10px;
-      text-align: left;
-    }
-
-    .state-btn .name {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .state-btn .range {
-      color: var(--muted);
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .state-btn.active {
-      background: var(--active-panel);
-      color: var(--accent);
-      box-shadow: inset 0 -2px 0 var(--accent);
-    }
-
-    .panel-section {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #181818;
-    }
-
-    #currentFreq {
-      color: var(--accent);
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-    }
-
-    #currentState,
-    #lockReadout {
-      margin-top: 4px;
-      color: var(--dim);
-      font-size: 9px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    #bottombar {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      display: flex;
-      border-top: 1px solid var(--border);
-      background: #08080a;
-      z-index: 5;
-    }
-
-    #bottombar div {
-      flex: 1;
-      padding: 12px 16px;
-      border-right: 1px solid #181818;
-      color: #777;
-    }
-
-    #bottombar div:last-child {
-      border-right: 0;
-    }
-
-    @media (max-width: 760px) {
-      #topbar {
-        flex-wrap: wrap;
-      }
-
-      .top-btn {
-        flex: 1;
-      }
-
-      .speed-cell,
-      .top-cell {
-        flex: 1 1 50%;
-      }
-
-      #panel {
-        top: 104px;
-      }
-
-      #bottombar {
-        display: none;
+      if (glide) {
+        const currentLeft = leftOscRef.current.frequency.value;
+        leftOscRef.current.frequency.setValueAtTime(currentLeft, now);
+        rightOscRef.current.frequency.setTargetAtTime(next.right, now, 0.06);
+      } else {
+        leftOscRef.current.frequency.setValueAtTime(next.left, now);
+        rightOscRef.current.frequency.setValueAtTime(next.right, now);
       }
     }
-  </style>
-</head>
-<body>
-  <div id="app">
-    <canvas id="field"></canvas>
-    <img id="logo" src="./ebm.jpg" alt="EBM Logo" />
+  };
 
-    <div id="topbar">
-      <button id="audioBtn" class="top-btn">Audio</button>
-      <button id="emdrBtn" class="top-btn active">EMDR Mode</button>
+  useEffect(() => {
+    selectedStateRef.current = selectedState;
+    applyFrequencies(pointerRef.current.x, pointerRef.current.y, true);
+  }, [selectedState]);
 
-      <label class="speed-cell">
-        <span>Speed</span>
-        <input id="speed" type="range" min="0.3" max="3" step="0.01" value="1" />
-      </label>
+  useEffect(() => {
+    lockedRef.current = locked;
+  }, [locked]);
 
-      <div class="top-cell freq-cell">
-        <span class="readout-label">Left / Right</span>
-        <span id="topFreq" class="readout-value">200.0Hz / 202.0Hz</span>
-      </div>
+  useEffect(() => {
+    visualRef.current = visualMode;
+  }, [visualMode]);
 
-      <div class="top-cell">
-        <span class="readout-label">Beat</span>
-        <span id="beatReadout" class="readout-value">2.00Hz</span>
-      </div>
-    </div>
+  useEffect(() => {
+    sweepRateRef.current = speedMap[sweepSpeed] ?? speedMap.medium;
+  }, [sweepSpeed]);
 
-    <div id="panel">
-      <div class="panel-title">Brainwave State</div>
-      <div id="states"></div>
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
 
-      <div class="panel-section">
-        <div class="panel-small">Current</div>
-        <div id="currentFreq">200.0Hz / 202.0Hz</div>
-        <div id="currentState">Deep Sleep · 0.5–4Hz</div>
-      </div>
-
-      <div class="panel-section" id="lockReadout">Cursor Live · Sweep 1.00Hz</div>
-    </div>
-
-    <div id="bottombar">
-      <div>Y Axis: Carrier Pitch</div>
-      <div>X Axis: Beat Within State</div>
-      <div>EMDR Mode: Light Ball On / Off</div>
-    </div>
-  </div>
-
-  <script>
-    const brainwaveStates = [
-      {
-        label: 'Delta',
-        description: 'Deep Sleep',
-        frequencyRange: [0.5, 4],
-        theme: {
-          accent: '#3d6ea8',
-          accentSoft: 'rgba(61, 110, 168, 0.10)',
-          glow: 'rgba(61, 110, 168, 0.55)',
-          panel: '#080d14',
-          activePanel: '#0d1724',
-          border: '#1c314a',
-        },
-      },
-      {
-        label: 'Theta',
-        description: 'Relaxation',
-        frequencyRange: [4, 8],
-        theme: {
-          accent: '#6a7fc6',
-          accentSoft: 'rgba(106, 127, 198, 0.10)',
-          glow: 'rgba(106, 127, 198, 0.55)',
-          panel: '#0b0c15',
-          activePanel: '#12142a',
-          border: '#2a315f',
-        },
-      },
-      {
-        label: 'Alpha',
-        description: 'Calm Focus',
-        frequencyRange: [8, 12],
-        theme: {
-          accent: '#61a979',
-          accentSoft: 'rgba(97, 169, 121, 0.10)',
-          glow: 'rgba(97, 169, 121, 0.55)',
-          panel: '#0a100d',
-          activePanel: '#101b14',
-          border: '#274934',
-        },
-      },
-      {
-        label: 'Beta',
-        description: 'Alertness',
-        frequencyRange: [12, 30],
-        theme: {
-          accent: '#e3a15e',
-          accentSoft: 'rgba(227, 161, 94, 0.10)',
-          glow: 'rgba(227, 161, 94, 0.55)',
-          panel: '#100d09',
-          activePanel: '#1b140c',
-          border: '#5c4430',
-        },
-      },
-      {
-        label: 'Gamma',
-        description: 'High Focus',
-        frequencyRange: [30, 50],
-        theme: {
-          accent: '#d24b5f',
-          accentSoft: 'rgba(210, 75, 95, 0.11)',
-          glow: 'rgba(210, 75, 95, 0.62)',
-          panel: '#12080b',
-          activePanel: '#211016',
-          border: '#74323d',
-        },
-      },
-    ];
-
-    const canvas = document.getElementById('field');
     const ctx = canvas.getContext('2d');
-    const root = document.documentElement;
-    const statesEl = document.getElementById('states');
-    const audioBtn = document.getElementById('audioBtn');
-    const emdrBtn = document.getElementById('emdrBtn');
-    const speedInput = document.getElementById('speed');
-    const topFreq = document.getElementById('topFreq');
-    const beatReadout = document.getElementById('beatReadout');
-    const currentFreq = document.getElementById('currentFreq');
-    const currentState = document.getElementById('currentState');
-    const lockReadout = document.getElementById('lockReadout');
+    if (!ctx) return undefined;
 
-    const carrierMinHz = 50;
-    const carrierMaxHz = 350;
-    const carrierGuideHz = [50, 63, 80, 100, 125, 160, 200, 250, 315, 350];
-
-    let selectedState = brainwaveStates[0];
-    let pointer = { x: 0, y: 0 };
-    let locked = false;
-    let emdrMode = true;
-    let sweepRate = 1;
-    let current = { left: 200, right: 202, beat: 2 };
-
-    let audioCtx = null;
-    let leftOsc = null;
-    let rightOsc = null;
-    let masterGain = null;
-    let playing = false;
-
-    function clamp(value, min, max) {
-      return Math.min(max, Math.max(min, value));
-    }
-
-    function setTheme(theme) {
-      root.style.setProperty('--accent', theme.accent);
-      root.style.setProperty('--accent-soft', theme.accentSoft);
-      root.style.setProperty('--glow', theme.glow);
-      root.style.setProperty('--panel', theme.panel);
-      root.style.setProperty('--active-panel', theme.activePanel);
-      root.style.setProperty('--border', theme.border);
-    }
-
-    function yForCarrierHz(freq, height) {
-      const minLog = Math.log(carrierMinHz);
-      const maxLog = Math.log(carrierMaxHz);
-      const normalized = (Math.log(freq) - minLog) / (maxLog - minLog);
-      return height * (1 - normalized);
-    }
-
-    function getFrequenciesFromPoint(x, y) {
-      const width = Math.max(1, canvas.width);
-      const height = Math.max(1, canvas.height);
-      const nx = clamp(x / width, 0, 1);
-      const ny = clamp(y / height, 0, 1);
-      const minLog = Math.log(carrierMinHz);
-      const maxLog = Math.log(carrierMaxHz);
-      const baseFreq = Math.exp(minLog + (1 - ny) * (maxLog - minLog));
-      const [minBeat, maxBeat] = selectedState.frequencyRange;
-      const beatFreq = minBeat + nx * (maxBeat - minBeat);
-      return {
-        left: baseFreq,
-        right: baseFreq + beatFreq,
-        beat: beatFreq,
-      };
-    }
-
-    function applyFrequencies(x, y) {
-      current = getFrequenciesFromPoint(x, y);
-      updateReadouts();
-
-      if (leftOsc && rightOsc && audioCtx) {
-        const now = audioCtx.currentTime;
-        leftOsc.frequency.setTargetAtTime(current.left, now, 0.12);
-        rightOsc.frequency.setTargetAtTime(current.right, now, 0.35);
-      }
-    }
-
-    function updateReadouts() {
-      const freqText = `${current.left.toFixed(1)}Hz / ${current.right.toFixed(1)}Hz`;
-      topFreq.textContent = freqText;
-      currentFreq.textContent = freqText;
-      beatReadout.textContent = `${current.beat.toFixed(2)}Hz`;
-      currentState.textContent = `${selectedState.description} · ${selectedState.frequencyRange[0]}–${selectedState.frequencyRange[1]}Hz`;
-      lockReadout.textContent = `${locked ? 'Cursor Locked' : 'Cursor Live'} · Sweep ${sweepRate.toFixed(2)}Hz`;
-    }
-
-    function renderStateButtons() {
-      statesEl.innerHTML = '';
-      brainwaveStates.forEach((state) => {
-        const button = document.createElement('button');
-        button.className = `state-btn ${state.label === selectedState.label ? 'active' : ''}`;
-        button.innerHTML = `<span class="name">${state.label}</span><span class="range">${state.frequencyRange[0]}–${state.frequencyRange[1]}Hz</span>`;
-        button.addEventListener('click', (event) => {
-          event.stopPropagation();
-          selectedState = state;
-          setTheme(state.theme);
-          renderStateButtons();
-          applyFrequencies(pointer.x, pointer.y);
-        });
-        statesEl.appendChild(button);
-      });
-    }
-
-    function resize() {
+    const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      if (pointer.x === 0 && pointer.y === 0) {
-        pointer = { x: canvas.width / 2, y: canvas.height / 2 };
+
+      if (pointerRef.current.x === 0 && pointerRef.current.y === 0) {
+        pointerRef.current = { x: canvas.width / 2, y: canvas.height / 2 };
       } else {
-        pointer = {
-          x: clamp(pointer.x, 0, canvas.width),
-          y: clamp(pointer.y, 0, canvas.height),
+        pointerRef.current = {
+          x: clamp(pointerRef.current.x, 0, canvas.width),
+          y: clamp(pointerRef.current.y, 0, canvas.height),
         };
       }
-      applyFrequencies(pointer.x, pointer.y);
-    }
 
-    function draw() {
-      const theme = selectedState.theme;
+      applyFrequencies(pointerRef.current.x, pointerRef.current.y);
+    };
+
+    const draw = () => {
+      const activeTheme = selectedStateRef.current.theme;
       const nowSeconds = performance.now() / 1000;
-      const sweep = 0.5 + 0.5 * Math.sin(nowSeconds * sweepRate * Math.PI * 2 - Math.PI / 2);
+      const currentFreq = currentFreqRef.current;
+      const pointer = pointerRef.current;
+      const isLocked = lockedRef.current;
+      const showVisual = visualRef.current;
+      const sweepRateNow = sweepRateRef.current;
+
+      const sweep = 0.5 + 0.5 * Math.sin(nowSeconds * sweepRateNow * Math.PI * 2 - Math.PI / 2);
       const margin = Math.max(72, canvas.width * 0.08);
       const pingX = margin + sweep * Math.max(1, canvas.width - margin * 2);
       const pingY = canvas.height * 0.5;
-      const pulse = 0.5 + 0.5 * Math.sin(nowSeconds * current.beat * Math.PI * 2);
+      const pulse = 0.5 + 0.5 * Math.sin(nowSeconds * currentFreq.beat * Math.PI * 2);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#070708';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = theme.accentSoft;
+      ctx.strokeStyle = activeTheme.accentSoft;
       ctx.lineWidth = 1;
       for (let gx = 0; gx < canvas.width; gx += 48) {
         ctx.beginPath();
@@ -563,20 +229,23 @@
       carrierGuideHz.forEach((freq) => {
         const gy = yForCarrierHz(freq, canvas.height);
         const octave = freq === 50 || freq === 100 || freq === 200;
-        ctx.strokeStyle = octave ? theme.accentSoft.replace('0.10', '0.22').replace('0.11', '0.22') : theme.accentSoft;
+        ctx.strokeStyle = octave
+          ? activeTheme.accentSoft.replace('0.10', '0.22').replace('0.11', '0.22')
+          : activeTheme.accentSoft;
         ctx.lineWidth = octave ? 1.25 : 1;
         ctx.beginPath();
         ctx.moveTo(0, gy);
         ctx.lineTo(canvas.width, gy);
         ctx.stroke();
-        ctx.fillStyle = octave ? theme.accent : '#5f5a50';
-        ctx.font = '9px Courier, monospace';
+
+        ctx.fillStyle = octave ? activeTheme.accent : '#5f5a50';
+        ctx.font = '9px Helvetica, Arial, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(`${freq}Hz`, canvas.width - 10, gy - 4);
+        ctx.fillText(`${freq}hz`, canvas.width - 10, gy - 4);
       });
 
-      if (emdrMode) {
-        ctx.strokeStyle = theme.accentSoft;
+      if (showVisual) {
+        ctx.strokeStyle = activeTheme.accentSoft;
         ctx.globalAlpha = 0.16;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -586,28 +255,29 @@
 
         const glowRadius = 24 + pulse * 12;
         const glow = ctx.createRadialGradient(pingX, pingY, 0, pingX, pingY, glowRadius);
-        glow.addColorStop(0, theme.glow.replace('0.55', '0.65').replace('0.62', '0.70'));
-        glow.addColorStop(0.35, theme.glow.replace('0.55', '0.28').replace('0.62', '0.32'));
+        glow.addColorStop(0, activeTheme.glow.replace('0.55', '0.65').replace('0.62', '0.70'));
+        glow.addColorStop(0.35, activeTheme.glow.replace('0.55', '0.28').replace('0.62', '0.32'));
         glow.addColorStop(1, 'rgba(0,0,0,0)');
+
         ctx.globalAlpha = 1;
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(pingX, pingY, glowRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = theme.accent;
+        ctx.fillStyle = activeTheme.accent;
         ctx.shadowBlur = 14;
-        ctx.shadowColor = theme.glow;
+        ctx.shadowColor = activeTheme.glow;
         ctx.beginPath();
         ctx.arc(pingX, pingY, 4 + pulse * 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      ctx.strokeStyle = theme.accent;
+      ctx.strokeStyle = activeTheme.accent;
       ctx.lineWidth = 1.5;
-      ctx.shadowBlur = locked ? 10 : 4;
-      ctx.shadowColor = theme.glow;
+      ctx.shadowBlur = isLocked ? 10 : 4;
+      ctx.shadowColor = activeTheme.glow;
 
       ctx.beginPath();
       ctx.arc(pointer.x, pointer.y, 15, Math.PI * 0.62, Math.PI * 1.38);
@@ -617,104 +287,219 @@
       ctx.stroke();
 
       ctx.shadowBlur = 0;
-      ctx.fillStyle = theme.accent;
+      ctx.fillStyle = activeTheme.accent;
       ctx.beginPath();
       ctx.arc(pointer.x, pointer.y, 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      requestAnimationFrame(draw);
-    }
+      animationRef.current = requestAnimationFrame(draw);
+    };
 
-    function handlePointerMove(event) {
-      if (locked) return;
-      pointer = { x: event.clientX, y: event.clientY };
-      applyFrequencies(pointer.x, pointer.y);
-    }
+    const handlePointerMove = (event) => {
+      if (lockedRef.current) return;
+      pointerRef.current = { x: event.clientX, y: event.clientY };
+      applyFrequencies(event.clientX, event.clientY);
+    };
 
-    function handleClick(event) {
-      pointer = { x: event.clientX, y: event.clientY };
-      applyFrequencies(pointer.x, pointer.y);
-      locked = !locked;
-      updateReadouts();
-    }
+    const handleClick = (event) => {
+      pointerRef.current = { x: event.clientX, y: event.clientY };
+      applyFrequencies(event.clientX, event.clientY);
+      setLocked((prev) => !prev);
+    };
 
-    async function toggleAudio() {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-
-      if (!audioCtx) {
-        audioCtx = new AudioContextClass();
-        leftOsc = audioCtx.createOscillator();
-        rightOsc = audioCtx.createOscillator();
-        const leftGain = audioCtx.createGain();
-        const rightGain = audioCtx.createGain();
-        const merger = audioCtx.createChannelMerger(2);
-        masterGain = audioCtx.createGain();
-
-        leftOsc.type = 'sine';
-        rightOsc.type = 'sine';
-        leftGain.gain.value = 0.08;
-        rightGain.gain.value = 0.08;
-        masterGain.gain.value = 0;
-
-        leftOsc.connect(leftGain);
-        rightOsc.connect(rightGain);
-        leftGain.connect(merger, 0, 0);
-        rightGain.connect(merger, 0, 1);
-        merger.connect(masterGain);
-        masterGain.connect(audioCtx.destination);
-
-        leftOsc.start();
-        rightOsc.start();
-        applyFrequencies(pointer.x, pointer.y);
-
-        const now = audioCtx.currentTime;
-        masterGain.gain.cancelScheduledValues(now);
-        masterGain.gain.setValueAtTime(0, now);
-        masterGain.gain.linearRampToValueAtTime(0.75, now + 2);
-        playing = true;
-        audioBtn.classList.add('active');
-        return;
-      }
-
-      const now = audioCtx.currentTime;
-      const currentGain = masterGain.gain.value;
-      masterGain.gain.cancelScheduledValues(now);
-      masterGain.gain.setValueAtTime(currentGain, now);
-
-      if (playing) {
-        masterGain.gain.linearRampToValueAtTime(0, now + 3);
-        playing = false;
-        audioBtn.classList.remove('active');
-      } else {
-        if (audioCtx.state !== 'running') await audioCtx.resume();
-        masterGain.gain.linearRampToValueAtTime(0.75, now + 2);
-        playing = true;
-        audioBtn.classList.add('active');
-      }
-    }
-
-    audioBtn.addEventListener('click', toggleAudio);
-
-    emdrBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      emdrMode = !emdrMode;
-      emdrBtn.classList.toggle('active', emdrMode);
-    });
-
-    speedInput.addEventListener('input', (event) => {
-      sweepRate = parseFloat(event.target.value);
-      updateReadouts();
-    });
-
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('click', handleClick);
-    window.addEventListener('resize', resize);
-
-    setTheme(selectedState.theme);
-    renderStateButtons();
     resize();
     draw();
-  </script>
-</body>
-</html>
+
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('click', handleClick);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('click', handleClick);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, []);
+
+  const toggleAudio = async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+    if (!audioCtxRef.current) {
+      const audioCtx = new AudioContextClass();
+      const leftOsc = audioCtx.createOscillator();
+      const rightOsc = audioCtx.createOscillator();
+      const leftGain = audioCtx.createGain();
+      const rightGain = audioCtx.createGain();
+      const merger = audioCtx.createChannelMerger(2);
+      const masterGain = audioCtx.createGain();
+
+      leftOsc.type = 'sine';
+      rightOsc.type = 'sine';
+      leftGain.gain.value = 0.08;
+      rightGain.gain.value = 0.08;
+      masterGain.gain.value = 0;
+
+      leftOsc.connect(leftGain);
+      rightOsc.connect(rightGain);
+      leftGain.connect(merger, 0, 0);
+      rightGain.connect(merger, 0, 1);
+      merger.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
+
+      leftOsc.start();
+      rightOsc.start();
+
+      audioCtxRef.current = audioCtx;
+      leftOscRef.current = leftOsc;
+      rightOscRef.current = rightOsc;
+      masterGainRef.current = masterGain;
+
+      applyFrequencies(pointerRef.current.x, pointerRef.current.y);
+
+      const now = audioCtx.currentTime;
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(0, now);
+      masterGain.gain.linearRampToValueAtTime(0.75, now + 2);
+      setPlaying(true);
+      return;
+    }
+
+    const now = audioCtxRef.current.currentTime;
+    const currentGain = masterGainRef.current.gain.value;
+    masterGainRef.current.gain.cancelScheduledValues(now);
+    masterGainRef.current.gain.setValueAtTime(currentGain, now);
+
+    if (playing) {
+      masterGainRef.current.gain.linearRampToValueAtTime(0, now + 3);
+      setPlaying(false);
+    } else {
+      if (audioCtxRef.current.state !== 'running') {
+        await audioCtxRef.current.resume();
+      }
+      masterGainRef.current.gain.linearRampToValueAtTime(0.75, now + 2);
+      setPlaying(true);
+    }
+  };
+
+  return (
+    <div
+      className="relative h-screen w-screen select-none overflow-hidden bg-[#070708] text-[#c9c3b5]"
+      style={{ fontFamily: 'Helvetica, Arial, sans-serif' }}
+    >
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair" />
+
+      <div
+        className="absolute left-0 right-0 top-0 z-10 flex items-stretch border-b bg-[#09090b]"
+        style={{ borderColor: theme.border }}
+      >
+        <div className="flex items-center border-r px-4" style={{ borderColor: '#161616' }}>
+          <EBMLogo color={theme.accent} />
+        </div>
+
+        <button
+          type="button"
+          onClick={toggleAudio}
+          className="border-r px-[15px] py-3 text-[10px] lowercase tracking-[0.08em]"
+          style={{
+            borderColor: '#161616',
+            color: playing ? theme.accent : '#555',
+            background: playing ? theme.activePanel : 'transparent',
+            boxShadow: playing ? `inset 0 -2px 0 ${theme.accent}` : 'none',
+          }}
+        >
+          audio
+        </button>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setVisualMode((prev) => !prev);
+          }}
+          className="border-r px-[15px] py-3 text-[10px] lowercase tracking-[0.08em]"
+          style={{
+            borderColor: '#161616',
+            color: visualMode ? theme.accent : '#555',
+            background: visualMode ? theme.activePanel : 'transparent',
+            boxShadow: visualMode ? `inset 0 -2px 0 ${theme.accent}` : 'none',
+          }}
+        >
+          visual
+        </button>
+
+        {visualMode && (
+          <div
+            className="absolute left-[148px] top-full z-20 grid w-[210px] grid-cols-3 gap-px border border-t-0 bg-[#09090b] shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+            style={{ borderColor: theme.border }}
+          >
+            {['slow', 'medium', 'fast'].map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSweepSpeed(speed);
+                }}
+                className="px-2 py-2 text-[9px] lowercase tracking-[0.06em]"
+                style={{
+                  color: sweepSpeed === speed ? theme.accent : '#777',
+                  background: sweepSpeed === speed ? theme.activePanel : '#0d0d10',
+                  boxShadow: sweepSpeed === speed ? `inset 0 -2px 0 ${theme.accent}` : 'none',
+                }}
+              >
+                {speed}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex min-w-0 flex-1 items-center gap-3 border-r px-4 py-2" style={{ borderColor: '#161616' }}>
+          <span className="text-[8px] lowercase tracking-[0.08em] text-[#8f8a7b]">left / right</span>
+          <span className="whitespace-nowrap text-[13px] font-bold tracking-[0.04em]" style={{ color: theme.accent }}>
+            {frequencies.left.toFixed(1)}hz / {frequencies.right.toFixed(1)}hz
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-2">
+          <span className="text-[8px] lowercase tracking-[0.08em] text-[#8f8a7b]">beat</span>
+          <span className="whitespace-nowrap text-[13px] font-bold tracking-[0.04em]" style={{ color: theme.accent }}>
+            {frequencies.beat.toFixed(2)}hz
+          </span>
+        </div>
+      </div>
+
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 grid grid-cols-5 gap-px border-t bg-[#08080a]"
+        style={{ borderColor: theme.border }}
+      >
+        {brainwaveStates.map((state) => {
+          const active = selectedState.label === state.label;
+          return (
+            <button
+              key={state.label}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedState(state);
+              }}
+              className="flex min-h-[46px] flex-col items-center justify-center gap-[5px] border-r px-3 py-2 text-center"
+              style={{
+                borderColor: '#151515',
+                background: active ? state.theme.activePanel : '#0d0d10',
+                color: active ? state.theme.accent : '#777',
+                boxShadow: active ? `inset 0 -2px 0 ${state.theme.accent}` : 'none',
+              }}
+            >
+              <span className="text-[11px] font-bold lowercase tracking-[0.06em]">{state.label}</span>
+              <span className="text-[8px] lowercase tracking-[0.04em] text-[#8f8a7b]">
+                {state.frequencyRange[0]}–{state.frequencyRange[1]}hz
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
