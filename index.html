@@ -1,219 +1,236 @@
-import React, { useEffect, useRef, useState } from 'react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ebm</title>
 
-const brainwaveStates = [
-  { label: 'delta', frequencyRange: [0.5, 4], theme: { accent: '#3d6ea8', accentSoft: 'rgba(61,110,168,0.10)', glow: 'rgba(61,110,168,0.55)', activePanel: '#0d1724', border: '#1c314a' } },
-  { label: 'theta', frequencyRange: [4, 8], theme: { accent: '#6a7fc6', accentSoft: 'rgba(106,127,198,0.10)', glow: 'rgba(106,127,198,0.55)', activePanel: '#12142a', border: '#2a315f' } },
-  { label: 'alpha', frequencyRange: [8, 12], theme: { accent: '#61a979', accentSoft: 'rgba(97,169,121,0.10)', glow: 'rgba(97,169,121,0.55)', activePanel: '#101b14', border: '#274934' } },
-  { label: 'beta', frequencyRange: [12, 30], theme: { accent: '#e3a15e', accentSoft: 'rgba(227,161,94,0.10)', glow: 'rgba(227,161,94,0.55)', activePanel: '#1b140c', border: '#5c4430' } },
-  { label: 'gamma', frequencyRange: [30, 50], theme: { accent: '#d24b5f', accentSoft: 'rgba(210,75,95,0.11)', glow: 'rgba(210,75,95,0.62)', activePanel: '#211016', border: '#74323d' } },
+<style>
+body {
+  margin: 0;
+  background: #070708;
+  color: #c9c3b5;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  border-bottom: 1px solid #222;
+  background: #09090b;
+  z-index: 10;
+}
+
+.btn {
+  padding: 14px;
+  border-right: 1px solid #111;
+  background: #0d0d10;
+  color: #666;
+  cursor: pointer;
+}
+
+.btn.active {
+  color: #61a979;
+}
+
+.readout {
+  margin-left: auto;
+  padding: 14px;
+  color: #61a979;
+}
+
+.bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #08080a;
+  border-top: 1px solid #222;
+}
+
+.bottom-header {
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #8f8a7b;
+  letter-spacing: .08em;
+}
+
+.states {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  height: 110px;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-right: 1px solid #151515;
+  background: #0d0d10;
+  color: #777;
+  cursor: pointer;
+}
+
+.state.active {
+  background: #101b14;
+  color: #61a979;
+}
+
+.state div:first-child {
+  font-size: 14px;
+}
+
+.state div:last-child {
+  font-size: 11px;
+  color: #8f8a7b;
+}
+
+.speed {
+  position: absolute;
+  top: 52px;
+  left: 120px;
+  display: none;
+  background: #0d0d10;
+  border: 1px solid #222;
+}
+
+.speed button {
+  padding: 10px;
+  background: none;
+  border: none;
+  color: #777;
+  cursor: pointer;
+}
+
+.speed button.active {
+  color: #61a979;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="c"></canvas>
+
+<div class="topbar">
+  <div class="btn" id="audio">audio</div>
+  <div class="btn" id="visual">visual</div>
+
+  <div class="speed" id="speed">
+    <button data-speed="slow">slow</button>
+    <button data-speed="medium" class="active">medium</button>
+    <button data-speed="fast">fast</button>
+  </div>
+
+  <div class="readout" id="readout">200hz / 202hz — 2hz</div>
+</div>
+
+<div class="bottom">
+  <div class="bottom-header">bueno brain entrainment</div>
+  <div class="states" id="states"></div>
+</div>
+
+<script>
+const states = [
+  { label: "delta", range: [0.5,4] },
+  { label: "theta", range: [4,8] },
+  { label: "alpha", range: [8,12] },
+  { label: "beta", range: [12,30] },
+  { label: "gamma", range: [30,50] }
 ];
 
-const carrierMinHz = 50;
-const carrierMaxHz = 350;
-const speedMap = { slow: 0.65, medium: 1, fast: 1.35 };
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
 
-function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+let width, height;
+let pointer = { x: 0, y: 0 };
 
-function getFrequenciesFromPoint(x, y, w, h, state) {
-  const nx = clamp(x / Math.max(1, w), 0, 1);
-  const ny = clamp(y / Math.max(1, h), 0, 1);
-  const minLog = Math.log(carrierMinHz);
-  const maxLog = Math.log(carrierMaxHz);
-  const left = Math.exp(minLog + (1 - ny) * (maxLog - minLog));
-  const [minBeat, maxBeat] = state.frequencyRange;
-  const beat = minBeat + nx * (maxBeat - minBeat);
-  return { left, right: left + beat, beat };
+let currentState = states[2];
+let visualOn = false;
+let speed = 1;
+
+const readout = document.getElementById("readout");
+const speedBox = document.getElementById("speed");
+
+function resize(){
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+function getFreq(x,y){
+  const left = 50 + (1 - y/height)*300;
+  const beat = currentState.range[0] + (x/width)*(currentState.range[1]-currentState.range[0]);
+  return { left, right: left+beat, beat };
 }
 
-function EBMLogo({ color }) {
-  return (
-    <svg width="56" height="36" viewBox="0 0 140 92">
-      <circle cx="70" cy="45" r="38" fill="none" stroke={color} strokeWidth="6" />
-      <text x="70" y="60" textAnchor="middle" fontSize="36" fontFamily="Helvetica, Arial" fill={color} letterSpacing="-2">ebm</text>
-    </svg>
-  );
+function draw(){
+  ctx.fillStyle="#070708";
+  ctx.fillRect(0,0,width,height);
+
+  if(visualOn){
+    const t = Date.now()/1000;
+    const sweep = 0.5 + 0.5*Math.sin(t*speed*2*Math.PI);
+    const x = sweep*width;
+    const y = height/2;
+
+    const g = ctx.createRadialGradient(x,y,0,x,y,40);
+    g.addColorStop(0,"#61a979");
+    g.addColorStop(1,"transparent");
+
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.arc(x,y,40,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  requestAnimationFrame(draw);
 }
+draw();
 
-export default function App() {
-  const canvasRef = useRef(null);
-  const pointerRef = useRef({ x: 0, y: 0 });
-  const selectedStateRef = useRef(brainwaveStates[0]);
-  const audioCtxRef = useRef(null);
-  const leftOscRef = useRef(null);
-  const rightOscRef = useRef(null);
-  const gainRef = useRef(null);
-  const sweepRateRef = useRef(1);
+canvas.addEventListener("pointermove", e=>{
+  pointer = {x:e.clientX,y:e.clientY};
+  const f = getFreq(pointer.x,pointer.y);
+  readout.innerText = `${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
+});
 
-  const [state, setState] = useState(brainwaveStates[0]);
-  const [freq, setFreq] = useState({ left: 200, right: 202, beat: 2 });
-  const [playing, setPlaying] = useState(false);
-  const [visual, setVisual] = useState(false);
-  const [speed, setSpeed] = useState('medium');
+document.getElementById("visual").onclick = ()=>{
+  visualOn = !visualOn;
+  speedBox.style.display = visualOn ? "block" : "none";
+};
 
-  const theme = state.theme;
-
-  useEffect(() => { selectedStateRef.current = state; }, [state]);
-  useEffect(() => { sweepRateRef.current = speedMap[speed]; }, [speed]);
-
-  const apply = (x, y) => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const next = getFrequenciesFromPoint(x, y, c.width, c.height, selectedStateRef.current);
-    setFreq(next);
-    if (leftOscRef.current && rightOscRef.current && audioCtxRef.current) {
-      const t = audioCtxRef.current.currentTime;
-      leftOscRef.current.frequency.setValueAtTime(next.left, t);
-      rightOscRef.current.frequency.setValueAtTime(next.right, t);
-    }
+document.querySelectorAll(".speed button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".speed button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    speed = {slow:0.6,medium:1,fast:1.4}[b.dataset.speed];
   };
+});
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+const statesDiv = document.getElementById("states");
 
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      if (!pointerRef.current.x) pointerRef.current = { x: canvas.width/2, y: canvas.height/2 };
-    };
-
-    const draw = () => {
-      ctx.fillStyle = '#070708';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      if (visual) {
-        const t = performance.now()/1000;
-        const sweep = 0.5 + 0.5 * Math.sin(t * sweepRateRef.current * Math.PI * 2);
-        const x = sweep * canvas.width;
-        const y = canvas.height/2;
-
-        const g = ctx.createRadialGradient(x,y,0,x,y,30);
-        g.addColorStop(0, theme.glow);
-        g.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x,y,30,0,Math.PI*2);
-        ctx.fill();
-      }
-
-      requestAnimationFrame(draw);
-    };
-
-    const move = (e) => {
-      pointerRef.current = { x: e.clientX, y: e.clientY };
-      apply(e.clientX, e.clientY);
-    };
-
-    resize();
-    draw();
-
-    window.addEventListener('resize', resize);
-    canvas.addEventListener('pointermove', move);
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      canvas.removeEventListener('pointermove', move);
-    };
-  }, [visual]);
-
-  const toggleAudio = async () => {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!audioCtxRef.current) {
-      const ctx = new AC();
-      const l = ctx.createOscillator();
-      const r = ctx.createOscillator();
-      const g = ctx.createGain();
-
-      l.type = 'sine';
-      r.type = 'sine';
-      g.gain.value = 0;
-
-      l.connect(g);
-      r.connect(g);
-      g.connect(ctx.destination);
-
-      l.start(); r.start();
-
-      audioCtxRef.current = ctx;
-      leftOscRef.current = l;
-      rightOscRef.current = r;
-      gainRef.current = g;
-
-      apply(pointerRef.current.x, pointerRef.current.y);
-
-      const now = ctx.currentTime;
-      g.gain.linearRampToValueAtTime(0.5, now + 2);
-      setPlaying(true);
-      return;
-    }
-
-    const now = audioCtxRef.current.currentTime;
-    if (playing) {
-      gainRef.current.gain.linearRampToValueAtTime(0, now + 3);
-      setPlaying(false);
-    } else {
-      gainRef.current.gain.linearRampToValueAtTime(0.5, now + 2);
-      setPlaying(true);
-    }
+states.forEach((s,i)=>{
+  const el = document.createElement("div");
+  el.className="state" + (i===2?" active":"");
+  el.innerHTML = `<div>${s.label}</div><div>${s.range[0]}–${s.range[1]}hz</div>`;
+  el.onclick=()=>{
+    document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
+    el.classList.add("active");
+    currentState = s;
   };
+  statesDiv.appendChild(el);
+});
+</script>
 
-  return (
-    <div style={{ fontFamily: 'Helvetica, Arial', background: '#070708', color: '#c9c3b5' }}>
-      <canvas ref={canvasRef} style={{ position:'fixed', inset:0 }} />
-
-      <div style={{ position:'fixed', top:0, left:0, right:0, display:'flex', borderBottom:`1px solid ${theme.border}`, background:'#09090b' }}>
-        <div style={{ padding:10, borderRight:'1px solid #111' }}>
-          <EBMLogo color={theme.accent} />
-        </div>
-
-        <button onClick={toggleAudio} style={{ padding:12, color: playing?theme.accent:'#555' }}>audio</button>
-
-        <button onClick={()=>setVisual(v=>!v)} style={{ padding:12, color: visual?theme.accent:'#555' }}>visual</button>
-
-        {visual && (
-          <div style={{ display:'flex' }}>
-            {['slow','medium','fast'].map(s => (
-              <button key={s} onClick={()=>setSpeed(s)} style={{ padding:8, color: speed===s?theme.accent:'#777' }}>{s}</button>
-            ))}
-          </div>
-        )}
-
-        <div style={{ marginLeft:'auto', padding:12, color: theme.accent }}>
-          {freq.left.toFixed(1)}hz / {freq.right.toFixed(1)}hz — {freq.beat.toFixed(2)}hz
-        </div>
-      </div>
-
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'#08080a', borderTop:`1px solid ${theme.border}` }}>
-        <div style={{ padding:'6px 10px', fontSize:11, color:'#8f8a7b', letterSpacing:'.08em' }}>
-          bueno brain entrainment
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', height:90 }}>
-          {brainwaveStates.map(s => (
-            <button
-              key={s.label}
-              onClick={()=>setState(s)}
-              style={{
-                height:'100%',
-                display:'flex',
-                flexDirection:'column',
-                justifyContent:'center',
-                alignItems:'center',
-                borderRight:'1px solid #151515',
-                background: state.label===s.label ? s.theme.activePanel : '#0d0d10',
-                color: state.label===s.label ? s.theme.accent : '#777'
-              }}
-            >
-              <div style={{ fontSize:14 }}>{s.label}</div>
-              <div style={{ fontSize:11, color:'#8f8a7b' }}>{s.frequencyRange[0]}–{s.frequencyRange[1]}hz</div>
-            </button>
-          ))}
-        </div>
-              <div style={{ fontSize:10, color:'#8f8a7b' }}>{s.frequencyRange[0]}–{s.frequencyRange[1]}hz</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+</body>
+</html>
