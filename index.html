@@ -1,14 +1,19 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>bueno brain entrainment</title>
 
 <style>
 :root{
-  --accent:#61a979;
+  --accent:#3d6ea8;
   --bg:#070708;
+  --panel:#08090a;
+  --line:#151715;
+  --text:#aaa394;
+  --muted:#69675f;
+  --dim:#393d38;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -16,10 +21,10 @@
 html,body{
   width:100%;
   height:100%;
-  background:var(--bg);
-  color:#c9c3b5;
-  font-family: Helvetica, Arial, sans-serif;
   overflow:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Helvetica, Arial, sans-serif;
   touch-action:none;
 }
 
@@ -28,9 +33,10 @@ canvas{
   inset:0;
   width:100%;
   height:100%;
+  display:block;
 }
 
-/* TOP BAR */
+/* TOP */
 .topbar{
   position:fixed;
   top:0;
@@ -39,8 +45,8 @@ canvas{
   height:46px;
   display:flex;
   align-items:center;
-  border-bottom:1px solid #1a1a1a;
   background:#080809;
+  border-bottom:1px solid #141414;
   z-index:10;
 }
 
@@ -52,23 +58,23 @@ canvas{
   justify-content:center;
   border-right:1px solid #111;
   color:var(--accent);
+  font-size:12px;
   font-weight:700;
-  font-size:13px;
-  letter-spacing:.05em;
+  letter-spacing:.06em;
 }
 
 .btn{
   height:46px;
-  padding:0 16px;
-  border-right:1px solid #111;
-  background:#0d0d10;
-  color:#666;
-  cursor:pointer;
+  padding:0 15px;
   display:flex;
   align-items:center;
   justify-content:center;
+  border-right:1px solid #111;
+  background:#0d0d10;
+  color:#666;
+  font-size:12px;
+  cursor:pointer;
   user-select:none;
-  font-size:13px;
   text-transform:lowercase;
 }
 
@@ -79,31 +85,37 @@ canvas{
 
 .readout{
   margin-left:auto;
-  padding:0 16px;
+  height:46px;
+  padding:0 14px;
+  display:flex;
+  align-items:center;
   color:var(--accent);
-  font-size:13px;
+  font-size:12px;
   white-space:nowrap;
 }
 
-/* BOTTOM BAR */
+/* BOTTOM */
 .bottom{
   position:fixed;
   left:0;
   right:0;
   bottom:0;
-  background:#08080a;
-  border-top:1px solid #1a1a1a;
-  z-index:10;
   height:110px;
+  background:#08080a;
+  border-top:1px solid #161616;
+  z-index:10;
   display:flex;
   flex-direction:column;
 }
 
 .bottom-title{
+  height:24px;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  color:#8f8a7b;
   font-size:11px;
   letter-spacing:.08em;
-  color:#8f8a7b;
-  padding:6px 12px;
   text-transform:lowercase;
 }
 
@@ -142,17 +154,13 @@ canvas{
   font-weight:600;
 }
 
-.state .desc{
-  font-size:10px;
-  color:#8f8a7b;
-}
-
+.state .desc,
 .state .range{
   font-size:10px;
   color:#8f8a7b;
 }
 
-.lock-note{
+.note{
   position:fixed;
   left:12px;
   bottom:124px;
@@ -163,36 +171,32 @@ canvas{
   pointer-events:none;
 }
 
-.lock-note.active{
+.note.active{
   color:var(--accent);
 }
 
-/* MOBILE */
-@media (max-width:700px){
-  .bottom{
-    height:120px;
+@media(max-width:700px){
+  .bottom{height:120px;}
+
+  .readout{
+    font-size:10px;
+    padding:0 8px;
+  }
+
+  .btn{
+    padding:0 12px;
+    font-size:11px;
+  }
+
+  .logo{
+    width:56px;
   }
 
   .state .name{font-size:12px;}
   .state .desc,
   .state .range{font-size:9px;}
 
-  .readout{
-    font-size:11px;
-    padding:0 10px;
-  }
-
-  .btn{
-    padding:0 12px;
-    font-size:12px;
-  }
-
-  .logo{
-    width:56px;
-    font-size:12px;
-  }
-
-  .lock-note{
+  .note{
     bottom:134px;
   }
 }
@@ -205,12 +209,12 @@ canvas{
 
 <div class="topbar">
   <div class="logo">ebm</div>
-  <div class="btn" id="audio">audio</div>
-  <div class="btn" id="visual">visual</div>
+  <div class="btn" id="audioBtn">audio</div>
+  <div class="btn" id="visualBtn">visual</div>
   <div class="readout" id="readout"></div>
 </div>
 
-<div class="lock-note" id="lockNote">move cursor / click to lock</div>
+<div class="note" id="note">move cursor / click to lock</div>
 
 <div class="bottom">
   <div class="bottom-title">bueno brain entrainment</div>
@@ -218,36 +222,88 @@ canvas{
 </div>
 
 <script>
-const states = [
-  {label:"delta",desc:"sleep",range:[0.5,4],color:"#3d6ea8"},
-  {label:"theta",desc:"dream",range:[4,8],color:"#6a7fc6"},
-  {label:"alpha",desc:"calm",range:[8,12],color:"#61a979"},
-  {label:"beta",desc:"alert",range:[12,30],color:"#e3a15e"},
-  {label:"gamma",desc:"focus",range:[30,50],color:"#d24b5f"}
+const PROTOCOLS = [
+  {
+    label:"delta",
+    desc:"sleep",
+    beatRange:[0.5,4],
+    carrierRange:[90,220],
+    defaultBeat:2.5,
+    defaultCarrier:150,
+    visualRate:0.32,
+    noiseAmount:0.018,
+    blsAmount:0.025,
+    color:"#3d6ea8"
+  },
+  {
+    label:"theta",
+    desc:"dream",
+    beatRange:[4,8],
+    carrierRange:[100,240],
+    defaultBeat:6,
+    defaultCarrier:170,
+    visualRate:0.42,
+    noiseAmount:0.016,
+    blsAmount:0.03,
+    color:"#6a7fc6"
+  },
+  {
+    label:"alpha",
+    desc:"calm",
+    beatRange:[8,12],
+    carrierRange:[120,260],
+    defaultBeat:10,
+    defaultCarrier:190,
+    visualRate:0.52,
+    noiseAmount:0.014,
+    blsAmount:0.035,
+    color:"#61a979"
+  },
+  {
+    label:"beta",
+    desc:"alert",
+    beatRange:[12,30],
+    carrierRange:[140,300],
+    defaultBeat:18,
+    defaultCarrier:210,
+    visualRate:0.68,
+    noiseAmount:0.011,
+    blsAmount:0.025,
+    color:"#e3a15e"
+  },
+  {
+    label:"gamma",
+    desc:"focus",
+    beatRange:[30,50],
+    carrierRange:[160,340],
+    defaultBeat:36,
+    defaultCarrier:230,
+    visualRate:0.82,
+    noiseAmount:0.009,
+    blsAmount:0.018,
+    color:"#d24b5f"
+  }
 ];
 
-let currentState = states[2];
+/* START ON DELTA */
+let currentProtocol = PROTOCOLS[0];
+
 let pointer = {x:innerWidth/2,y:innerHeight/2};
 let locked = false;
-let visual = false;
 let audioOn = false;
+let visualOn = false;
 
-let audioCtx = null;
-let leftOsc = null;
-let rightOsc = null;
-let leftGain = null;
-let rightGain = null;
-let masterGain = null;
-let leftPan = null;
-let rightPan = null;
+let currentBeat = currentProtocol.defaultBeat;
+let currentCarrier = currentProtocol.defaultCarrier;
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
+
 const readout = document.getElementById("readout");
-const audioBtn = document.getElementById("audio");
-const visualBtn = document.getElementById("visual");
 const statesDiv = document.getElementById("states");
-const lockNote = document.getElementById("lockNote");
+const audioBtn = document.getElementById("audioBtn");
+const visualBtn = document.getElementById("visualBtn");
+const note = document.getElementById("note");
 
 function resize(){
   const dpr = window.devicePixelRatio || 1;
@@ -256,6 +312,8 @@ function resize(){
   canvas.style.width = innerWidth + "px";
   canvas.style.height = innerHeight + "px";
   ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  pointer = paramsToPointer(currentBeat,currentCarrier,currentProtocol);
 }
 resize();
 addEventListener("resize",resize);
@@ -264,204 +322,640 @@ function clamp(v,min,max){
   return Math.max(min,Math.min(max,v));
 }
 
-function getFreq(x,y){
-  const safeY = clamp(y, 46, innerHeight - 120);
-  const safeX = clamp(x, 0, innerWidth);
+function topLimit(){
+  return 46;
+}
 
-  const left = 50 + (1 - safeY / innerHeight) * 300;
-  const beat = currentState.range[0] + (safeX / innerWidth) * (currentState.range[1] - currentState.range[0]);
+function bottomLimit(){
+  return window.innerWidth <= 700 ? 120 : 110;
+}
+
+function usableHeight(){
+  return innerHeight - topLimit() - bottomLimit();
+}
+
+function mapXToBeat(x, protocol=currentProtocol){
+  const safeX = clamp(x,0,innerWidth);
+  const xNorm = safeX / innerWidth;
+
+  return protocol.beatRange[0] +
+    xNorm * (protocol.beatRange[1] - protocol.beatRange[0]);
+}
+
+function mapYToCarrier(y, protocol=currentProtocol){
+  const safeY = clamp(y,topLimit(),innerHeight - bottomLimit());
+  const yNorm = 1 - ((safeY - topLimit()) / usableHeight());
+
+  return protocol.carrierRange[0] +
+    yNorm * (protocol.carrierRange[1] - protocol.carrierRange[0]);
+}
+
+function paramsToPointer(beat, carrier, protocol=currentProtocol){
+  const beatNorm =
+    (beat - protocol.beatRange[0]) /
+    (protocol.beatRange[1] - protocol.beatRange[0]);
+
+  const carrierNorm =
+    (carrier - protocol.carrierRange[0]) /
+    (protocol.carrierRange[1] - protocol.carrierRange[0]);
 
   return {
-    left,
-    right:left + beat,
-    beat
+    x: clamp(beatNorm,0,1) * innerWidth,
+    y: topLimit() + (1 - clamp(carrierNorm,0,1)) * usableHeight()
   };
 }
 
-function update(){
-  const f = getFreq(pointer.x,pointer.y);
-  readout.innerText = `${f.left.toFixed(1)}hz / ${f.right.toFixed(1)}hz — ${f.beat.toFixed(2)}hz`;
+function getPointerParams(){
+  const beat = mapXToBeat(pointer.x);
+  const carrier = mapYToCarrier(pointer.y);
 
-  document.documentElement.style.setProperty("--accent", currentState.color);
-
-  if(audioCtx && audioOn && leftOsc && rightOsc){
-    const now = audioCtx.currentTime;
-    leftOsc.frequency.setTargetAtTime(f.left, now, 0.035);
-    rightOsc.frequency.setTargetAtTime(f.right, now, 0.035);
-  }
+  return {
+    beat,
+    carrier,
+    left:carrier,
+    right:carrier + beat
+  };
 }
 
-function createAudio(){
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+/* AUDIO ENGINE */
 
-  leftOsc = audioCtx.createOscillator();
-  rightOsc = audioCtx.createOscillator();
+const AudioEngine = {
+  ctx:null,
 
-  leftGain = audioCtx.createGain();
-  rightGain = audioCtx.createGain();
-  masterGain = audioCtx.createGain();
+  leftOsc:null,
+  rightOsc:null,
 
-  leftPan = audioCtx.createStereoPanner();
-  rightPan = audioCtx.createStereoPanner();
+  leftBlsGain:null,
+  rightBlsGain:null,
 
-  leftOsc.type = "sine";
-  rightOsc.type = "sine";
+  leftMainGain:null,
+  rightMainGain:null,
 
-  leftPan.pan.value = -1;
-  rightPan.pan.value = 1;
+  leftPan:null,
+  rightPan:null,
 
-  leftGain.gain.value = 0;
-  rightGain.gain.value = 0;
-  masterGain.gain.value = 0.22;
+  masterGain:null,
 
-  leftOsc.connect(leftGain);
-  rightOsc.connect(rightGain);
+  noiseSource:null,
+  noiseFilter:null,
+  noiseGain:null,
 
-  leftGain.connect(leftPan);
-  rightGain.connect(rightPan);
+  blsLfo:null,
+  blsDepthLeft:null,
+  blsDepthRight:null,
 
-  leftPan.connect(masterGain);
-  rightPan.connect(masterGain);
+  create(){
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-  masterGain.connect(audioCtx.destination);
+    this.leftOsc = this.ctx.createOscillator();
+    this.rightOsc = this.ctx.createOscillator();
 
-  const f = getFreq(pointer.x,pointer.y);
-  leftOsc.frequency.value = f.left;
-  rightOsc.frequency.value = f.right;
+    this.leftBlsGain = this.ctx.createGain();
+    this.rightBlsGain = this.ctx.createGain();
 
-  leftOsc.start();
-  rightOsc.start();
-}
+    this.leftMainGain = this.ctx.createGain();
+    this.rightMainGain = this.ctx.createGain();
 
-async function toggleAudio(){
-  if(!audioCtx){
-    createAudio();
-  }
+    this.leftPan = this.ctx.createStereoPanner();
+    this.rightPan = this.ctx.createStereoPanner();
 
-  if(audioCtx.state === "suspended"){
-    await audioCtx.resume();
-  }
+    this.masterGain = this.ctx.createGain();
 
-  const now = audioCtx.currentTime;
+    this.leftOsc.type = "sine";
+    this.rightOsc.type = "sine";
 
-  audioOn = !audioOn;
+    this.leftBlsGain.gain.value = 1;
+    this.rightBlsGain.gain.value = 1;
 
-  if(audioOn){
-    leftGain.gain.cancelScheduledValues(now);
-    rightGain.gain.cancelScheduledValues(now);
-    leftGain.gain.setTargetAtTime(0.18, now, 0.08);
-    rightGain.gain.setTargetAtTime(0.18, now, 0.08);
+    this.leftMainGain.gain.value = 0;
+    this.rightMainGain.gain.value = 0;
+
+    this.leftPan.pan.value = -1;
+    this.rightPan.pan.value = 1;
+
+    this.masterGain.gain.value = 0.22;
+
+    this.leftOsc.connect(this.leftBlsGain);
+    this.leftBlsGain.connect(this.leftMainGain);
+    this.leftMainGain.connect(this.leftPan);
+    this.leftPan.connect(this.masterGain);
+
+    this.rightOsc.connect(this.rightBlsGain);
+    this.rightBlsGain.connect(this.rightMainGain);
+    this.rightMainGain.connect(this.rightPan);
+    this.rightPan.connect(this.masterGain);
+
+    this.createPinkNoise();
+    this.createBlsLfo();
+
+    this.masterGain.connect(this.ctx.destination);
+
+    this.leftOsc.frequency.value = currentCarrier;
+    this.rightOsc.frequency.value = currentCarrier + currentBeat;
+
+    this.leftOsc.start();
+    this.rightOsc.start();
+  },
+
+  createPinkNoise(){
+    const bufferSize = this.ctx.sampleRate * 2;
+    const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate);
+
+    for(let ch=0; ch<2; ch++){
+      const data = buffer.getChannelData(ch);
+
+      let b0 = 0;
+      let b1 = 0;
+      let b2 = 0;
+      let b3 = 0;
+      let b4 = 0;
+      let b5 = 0;
+      let b6 = 0;
+
+      for(let i=0; i<bufferSize; i++){
+        const white = Math.random() * 2 - 1;
+
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+
+        data[i] = (b0+b1+b2+b3+b4+b5+b6+white*0.5362) * 0.08;
+        b6 = white * 0.115926;
+      }
+    }
+
+    this.noiseSource = this.ctx.createBufferSource();
+    this.noiseSource.buffer = buffer;
+    this.noiseSource.loop = true;
+
+    this.noiseFilter = this.ctx.createBiquadFilter();
+    this.noiseFilter.type = "lowpass";
+    this.noiseFilter.frequency.value = 900;
+    this.noiseFilter.Q.value = 0.2;
+
+    this.noiseGain = this.ctx.createGain();
+    this.noiseGain.gain.value = 0;
+
+    this.noiseSource.connect(this.noiseFilter);
+    this.noiseFilter.connect(this.noiseGain);
+    this.noiseGain.connect(this.masterGain);
+
+    this.noiseSource.start();
+  },
+
+  createBlsLfo(){
+    this.blsLfo = this.ctx.createOscillator();
+    this.blsLfo.type = "sine";
+    this.blsLfo.frequency.value = currentProtocol.visualRate;
+
+    this.blsDepthLeft = this.ctx.createGain();
+    this.blsDepthRight = this.ctx.createGain();
+
+    this.blsDepthLeft.gain.value = currentProtocol.blsAmount;
+    this.blsDepthRight.gain.value = -currentProtocol.blsAmount;
+
+    this.blsLfo.connect(this.blsDepthLeft);
+    this.blsLfo.connect(this.blsDepthRight);
+
+    this.blsDepthLeft.connect(this.leftBlsGain.gain);
+    this.blsDepthRight.connect(this.rightBlsGain.gain);
+
+    this.blsLfo.start();
+  },
+
+  async resume(){
+    if(!this.ctx) this.create();
+    if(this.ctx.state === "suspended") await this.ctx.resume();
+  },
+
+  async start(){
+    await this.resume();
+
+    const now = this.ctx.currentTime;
+    audioOn = true;
     audioBtn.classList.add("active");
-  } else {
-    leftGain.gain.cancelScheduledValues(now);
-    rightGain.gain.cancelScheduledValues(now);
-    leftGain.gain.setTargetAtTime(0, now, 0.08);
-    rightGain.gain.setTargetAtTime(0, now, 0.08);
+
+    this.leftMainGain.gain.cancelScheduledValues(now);
+    this.rightMainGain.gain.cancelScheduledValues(now);
+
+    this.leftMainGain.gain.setTargetAtTime(0.17, now, 0.12);
+    this.rightMainGain.gain.setTargetAtTime(0.17, now, 0.12);
+
+    this.setProtocol(currentProtocol, false);
+    this.setParams(currentBeat,currentCarrier,0.06);
+  },
+
+  stop(){
+    if(!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    audioOn = false;
     audioBtn.classList.remove("active");
+
+    this.leftMainGain.gain.cancelScheduledValues(now);
+    this.rightMainGain.gain.cancelScheduledValues(now);
+
+    this.leftMainGain.gain.setTargetAtTime(0, now, 0.12);
+    this.rightMainGain.gain.setTargetAtTime(0, now, 0.12);
+  },
+
+  setParams(beat, carrier, timeConstant=0.05){
+    if(!this.ctx || !this.leftOsc || !this.rightOsc) return;
+
+    const now = this.ctx.currentTime;
+
+    this.leftOsc.frequency.setTargetAtTime(carrier, now, timeConstant);
+    this.rightOsc.frequency.setTargetAtTime(carrier + beat, now, timeConstant);
+  },
+
+  setProtocol(protocol, smooth=true){
+    if(!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    /*
+      Shorter ramp so brainwave button changes are obvious.
+      Still smoothed enough to avoid clicks.
+    */
+    const timeConstant = smooth ? 0.25 : 0.06;
+
+    this.leftOsc.frequency.setTargetAtTime(currentCarrier, now, timeConstant);
+    this.rightOsc.frequency.setTargetAtTime(currentCarrier + currentBeat, now, timeConstant);
+
+    if(this.noiseGain){
+      this.noiseGain.gain.setTargetAtTime(protocol.noiseAmount, now, 0.8);
+    }
+
+    if(this.blsLfo){
+      this.blsLfo.frequency.setTargetAtTime(protocol.visualRate, now, 0.8);
+    }
+
+    if(this.blsDepthLeft && this.blsDepthRight){
+      this.blsDepthLeft.gain.setTargetAtTime(protocol.blsAmount, now, 0.8);
+      this.blsDepthRight.gain.setTargetAtTime(-protocol.blsAmount, now, 0.8);
+    }
   }
+};
 
-  update();
-}
+/* VISUAL ENGINE */
 
-function draw(){
-  if(visual){
-    ctx.fillStyle="rgba(7,7,8,0.18)";
-  } else {
-    ctx.fillStyle="#070708";
-  }
+const VisualEngine = {
+  emdrPhase:0,
 
-  ctx.fillRect(0,0,innerWidth,innerHeight);
+  drawBackground(){
+    ctx.fillStyle = "#070708";
+    ctx.fillRect(0,0,innerWidth,innerHeight);
 
-  const f = getFreq(pointer.x,pointer.y);
-  const t = performance.now() * 0.001;
-  const pulse = audioOn ? Math.sin(t * Math.PI * 2 * f.beat) : 0;
-  const r = 15 + pulse * 4;
+    const g = ctx.createLinearGradient(0,0,0,innerHeight);
+    g.addColorStop(0,"rgba(97,169,121,.026)");
+    g.addColorStop(.45,"rgba(97,169,121,.010)");
+    g.addColorStop(1,"rgba(0,0,0,0)");
 
-  ctx.strokeStyle = currentState.color;
-  ctx.lineWidth = 1.5;
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,innerWidth,innerHeight);
+  },
 
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,r,Math.PI*0.6,Math.PI*1.4);
-  ctx.stroke();
+  drawAxes(){
+    const left = 42;
+    const right = innerWidth - 24;
+    const top = topLimit() + 26;
+    const bottom = innerHeight - bottomLimit() - 26;
 
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,r,Math.PI*1.6,Math.PI*2.4);
-  ctx.stroke();
+    const xAxisY = bottom;
+    const yAxisX = left;
 
-  ctx.fillStyle = currentState.color;
-  ctx.beginPath();
-  ctx.arc(pointer.x,pointer.y,4,0,Math.PI*2);
-  ctx.fill();
+    ctx.save();
 
-  if(audioOn){
-    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = "rgba(97,169,121,.115)";
+    ctx.lineWidth = 1;
+
     ctx.beginPath();
-    ctx.arc(pointer.x,pointer.y,30 + Math.abs(pulse) * 24,0,Math.PI*2);
+    ctx.moveTo(left,xAxisY);
+    ctx.lineTo(right,xAxisY);
     ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
 
-  requestAnimationFrame(draw);
+    ctx.beginPath();
+    ctx.moveTo(yAxisX,top);
+    ctx.lineTo(yAxisX,bottom);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(97,169,121,.13)";
+
+    ctx.beginPath();
+    ctx.moveTo(pointer.x,top);
+    ctx.lineTo(pointer.x,bottom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(left,pointer.y);
+    ctx.lineTo(right,pointer.y);
+    ctx.stroke();
+
+    this.drawXAxisValues(left,right,xAxisY);
+    this.drawYAxisValues(yAxisX,top,bottom);
+
+    ctx.fillStyle = "rgba(143,138,123,.82)";
+    ctx.font = "11px Helvetica, Arial, sans-serif";
+    ctx.textBaseline = "middle";
+
+    ctx.textAlign = "center";
+    ctx.fillText(
+      `x beat ${currentBeat.toFixed(2)}hz`,
+      clamp(pointer.x,82,innerWidth - 82),
+      xAxisY + 33
+    );
+
+    ctx.save();
+    ctx.translate(yAxisX - 30, clamp(pointer.y,top + 42,bottom - 42));
+    ctx.rotate(-Math.PI/2);
+    ctx.textAlign = "center";
+    ctx.fillText(`y carrier ${currentCarrier.toFixed(1)}hz`,0,0);
+    ctx.restore();
+
+    ctx.restore();
+  },
+
+  drawXAxisValues(left,right,xAxisY){
+    const [min,max] = currentProtocol.beatRange;
+
+    ctx.save();
+    ctx.font = "10px Helvetica, Arial, sans-serif";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(105,103,95,.72)";
+    ctx.strokeStyle = "rgba(97,169,121,.10)";
+    ctx.lineWidth = 1;
+
+    const ticks = 4;
+
+    for(let i=0;i<=ticks;i++){
+      const norm = i / ticks;
+      const x = left + norm * (right - left);
+      const value = min + norm * (max - min);
+
+      ctx.beginPath();
+      ctx.moveTo(x,xAxisY - 4);
+      ctx.lineTo(x,xAxisY + 4);
+      ctx.stroke();
+
+      ctx.fillText(`${value.toFixed(value < 10 ? 1 : 0)}hz`,x,xAxisY + 8);
+    }
+
+    ctx.restore();
+  },
+
+  drawYAxisValues(yAxisX,top,bottom){
+    const [min,max] = currentProtocol.carrierRange;
+
+    ctx.save();
+    ctx.font = "10px Helvetica, Arial, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(105,103,95,.72)";
+    ctx.strokeStyle = "rgba(97,169,121,.10)";
+    ctx.lineWidth = 1;
+
+    const ticks = 4;
+
+    for(let i=0;i<=ticks;i++){
+      const norm = i / ticks;
+      const y = bottom - norm * (bottom - top);
+      const value = min + norm * (max - min);
+
+      ctx.beginPath();
+      ctx.moveTo(yAxisX - 4,y);
+      ctx.lineTo(yAxisX + 4,y);
+      ctx.stroke();
+
+      ctx.fillText(`${value.toFixed(0)}hz`,yAxisX + 8,y);
+    }
+
+    ctx.restore();
+  },
+
+  drawBilateralDot(dt){
+    const margin = 54;
+    const width = innerWidth - margin * 2;
+
+    const y = topLimit() + usableHeight() * 0.5;
+
+    const rate = currentProtocol.visualRate + currentBeat * 0.002;
+    this.emdrPhase += dt * rate * Math.PI * 2;
+
+    const phase = Math.sin(this.emdrPhase);
+    const x = margin + ((phase + 1) / 2) * width;
+
+    ctx.save();
+
+    ctx.strokeStyle = "rgba(97,169,121,.04)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin,y);
+    ctx.lineTo(innerWidth - margin,y);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(97,169,121,.05)";
+    ctx.beginPath();
+    ctx.arc(x,y,17,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(150,220,170,.34)";
+    ctx.shadowColor = "rgba(97,169,121,.48)";
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(x,y,4.2,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  },
+
+  drawCursor(t){
+    const pulse = audioOn
+      ? Math.sin(t * currentBeat * Math.PI * 2) * .5 + .5
+      : .25;
+
+    const r = 11 + pulse * 3;
+
+    ctx.save();
+
+    ctx.strokeStyle = currentProtocol.color;
+    ctx.globalAlpha = .55;
+    ctx.lineWidth = 1.2;
+    ctx.shadowColor = currentProtocol.color;
+    ctx.shadowBlur = 8;
+
+    ctx.beginPath();
+    ctx.arc(pointer.x,pointer.y,r,Math.PI*.65,Math.PI*1.35);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(pointer.x,pointer.y,r,Math.PI*1.65,Math.PI*2.35);
+    ctx.stroke();
+
+    ctx.globalAlpha = .7;
+    ctx.fillStyle = currentProtocol.color;
+    ctx.beginPath();
+    ctx.arc(pointer.x,pointer.y,2.2,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  },
+
+  drawGrain(){
+    ctx.save();
+
+    for(let i=0;i<14;i++){
+      ctx.fillStyle = `rgba(180,220,185,${Math.random()*.010})`;
+      ctx.fillRect(Math.random()*innerWidth,Math.random()*innerHeight,1,1);
+    }
+
+    ctx.restore();
+  }
+};
+
+/* UI + STATE */
+
+function setAccent(){
+  document.documentElement.style.setProperty("--accent",currentProtocol.color);
 }
 
-draw();
+function updateReadout(){
+  readout.textContent =
+    `${currentCarrier.toFixed(1)}hz / ${(currentCarrier + currentBeat).toFixed(1)}hz — ${currentBeat.toFixed(2)}hz`;
+}
 
-/* AUDIO BUTTON */
-audioBtn.addEventListener("click",toggleAudio);
+function setCurrentParams(beat,carrier){
+  currentBeat = beat;
+  currentCarrier = carrier;
+  pointer = paramsToPointer(currentBeat,currentCarrier,currentProtocol);
 
-/* VISUAL BUTTON */
-visualBtn.addEventListener("click",()=>{
-  visual = !visual;
-  visualBtn.classList.toggle("active",visual);
-});
+  AudioEngine.setParams(currentBeat,currentCarrier,0.06);
+  updateReadout();
+}
 
-/* LOCK SYSTEM */
+function syncFromPointer(){
+  currentBeat = mapXToBeat(pointer.x);
+  currentCarrier = mapYToCarrier(pointer.y);
+
+  AudioEngine.setParams(currentBeat,currentCarrier,0.045);
+  updateReadout();
+}
+
+function setProtocol(protocol){
+  currentProtocol = protocol;
+  setAccent();
+
+  /*
+    IMPORTANT FIX:
+    State buttons now move to the protocol defaults.
+    So delta/theta/alpha/beta/gamma are obviously different.
+  */
+  currentBeat = protocol.defaultBeat;
+  currentCarrier = protocol.defaultCarrier;
+  pointer = paramsToPointer(currentBeat,currentCarrier,protocol);
+
+  AudioEngine.setProtocol(protocol,true);
+  AudioEngine.setParams(currentBeat,currentCarrier,0.06);
+
+  updateReadout();
+}
+
+function buildStates(){
+  statesDiv.innerHTML = "";
+
+  PROTOCOLS.forEach((s,i)=>{
+    const el = document.createElement("div");
+
+    /* delta starts active */
+    el.className = "state" + (i === 0 ? " active" : "");
+
+    el.innerHTML = `
+      <div class="name">${s.label}</div>
+      <div class="desc">${s.desc}</div>
+      <div class="range">${s.beatRange[0]}–${s.beatRange[1]}hz</div>
+    `;
+
+    el.onclick = ()=>{
+      document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
+      el.classList.add("active");
+      setProtocol(s);
+    };
+
+    statesDiv.appendChild(el);
+  });
+}
+
+audioBtn.onclick = async ()=>{
+  if(audioOn){
+    AudioEngine.stop();
+  }else{
+    await AudioEngine.start();
+  }
+};
+
+visualBtn.onclick = ()=>{
+  visualOn = !visualOn;
+  visualBtn.classList.toggle("active",visualOn);
+};
+
 canvas.addEventListener("pointermove",e=>{
   if(locked)return;
 
-  pointer = {
-    x:e.clientX,
-    y:e.clientY
-  };
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
 
-  update();
+  syncFromPointer();
 });
 
 canvas.addEventListener("click",e=>{
-  pointer = {
-    x:e.clientX,
-    y:e.clientY
-  };
-
+  pointer.x = e.clientX;
+  pointer.y = e.clientY;
   locked = !locked;
-  lockNote.classList.toggle("active",locked);
-  lockNote.innerText = locked ? "locked / click to unlock" : "move cursor / click to lock";
 
-  update();
+  note.classList.toggle("active",locked);
+  note.textContent = locked
+    ? "locked / click to unlock"
+    : "move cursor / click to lock";
+
+  syncFromPointer();
 });
 
-/* STATES */
-states.forEach((s,i)=>{
-  const el = document.createElement("div");
-  el.className = "state" + (i===2 ? " active" : "");
+/* ANIMATION LOOP */
 
-  el.innerHTML = `
-    <div class="name">${s.label}</div>
-    <div class="desc">${s.desc}</div>
-    <div class="range">${s.range[0]}–${s.range[1]}hz</div>
-  `;
+let lastFrame = performance.now();
 
-  el.onclick = ()=>{
-    document.querySelectorAll(".state").forEach(x=>x.classList.remove("active"));
-    el.classList.add("active");
-    currentState = s;
-    update();
-  };
+function frame(ms){
+  const t = ms * 0.001;
+  const dt = Math.min(0.05,(ms - lastFrame) / 1000);
+  lastFrame = ms;
 
-  statesDiv.appendChild(el);
-});
+  VisualEngine.drawBackground();
 
-update();
+  if(visualOn){
+    VisualEngine.drawAxes();
+    VisualEngine.drawBilateralDot(dt);
+  }
+
+  VisualEngine.drawCursor(t);
+  VisualEngine.drawGrain();
+
+  updateReadout();
+
+  requestAnimationFrame(frame);
+}
+
+/* INIT */
+
+setAccent();
+buildStates();
+
+/* start visually and sonically on delta defaults */
+setCurrentParams(currentProtocol.defaultBeat,currentProtocol.defaultCarrier);
+
+requestAnimationFrame(frame);
 </script>
 
 </body>
